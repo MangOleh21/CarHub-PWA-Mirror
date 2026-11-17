@@ -1,21 +1,37 @@
-<<<<<<< HEAD
-# CarHub-PWA
-Marketplace berbasis PWA yang memungkinkan pengguna untuk melakukan jual-beli mobil bekas dengan kualitas dan harga terjamin.
-=======
-# React + Vite
+# CarHub PWA
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend React + Vite untuk marketplace mobil bekas CarHub. Data katalog, detail mobil, pengajuan, dan portal admin menggunakan REST API di backend; wishlist disimpan di LocalStorage perangkat.
 
-Currently, two official plugins are available:
+## Menjalankan lokal
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Backend berjalan di `http://localhost:5000` dan frontend Vite secara default memakai `http://localhost:5173`.
 
-## React Compiler
+```sh
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Default API base URL adalah `http://localhost:5000/api`. Untuk backend di lokasi lain, atur `VITE_API_BASE_URL` pada environment proses Vite. Nilainya harus menyertakan prefix `/api`; jangan menaruh `DATABASE_URL`, password admin, atau cookie sesi di variabel frontend.
 
-## Expanding the ESLint configuration
+Untuk permintaan lintas-origin, backend harus mengizinkan origin frontend melalui `FRONTEND_ORIGINS`. Browser mengirim cookie sesi admin melalui `credentials: include`; konfigurasi cookie dan `SameSite` harus sesuai dengan topologi domain saat deployment.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
->>>>>>> 08d56a3 (initialise project with npm create react template)
+## Halaman
+
+- `/` — katalog, pencarian, filter merk, dan pagination.
+- `/cars/:id` — spesifikasi mobil serta tautan WhatsApp penjual.
+- `/wishlist` — mobil favorit lokal.
+- `/sell` — form pengajuan jual mobil.
+- `/about` — profil pembuat dan panduan pemasangan.
+- `/admin/login` dan `/admin` — portal admin dengan sesi cookie backend.
+
+Profil tugas praktikum ada di `src/data/profile.js`. Foto bersifat opsional; jika belum diisi, aplikasi menampilkan inisial.
+
+## Pemeriksaan
+
+```sh
+npm test
+npm run lint
+npm run build
+```
+
+Build mengaktifkan manifest dan service worker. Service worker menyimpan app shell; respons API tidak disimpan dalam cache offline.

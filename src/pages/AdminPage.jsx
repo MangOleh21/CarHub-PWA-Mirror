@@ -1,0 +1,94 @@
+import { useState } from 'react'
+import AppLink from '../components/AppLink.jsx'
+import { ErrorState } from '../components/Feedback.jsx'
+import AdminDashboard from './admin/AdminDashboard.jsx'
+import AdminCarEditor from './admin/AdminCarEditor.jsx'
+import { loginAdmin } from '../services/api.js'
+
+export default function AdminPage({ pathname, navigate }) {
+  if (pathname === '/admin/login') return <AdminLogin navigate={navigate} />
+
+  const editorMatch = pathname.match(/^\/admin\/cars\/(new|[1-9]\d*\/edit)$/)
+  if (editorMatch) {
+    const isNew = editorMatch[1] === 'new'
+    const carId = isNew ? null : editorMatch[1].split('/')[0]
+    return <AdminCarEditor carId={carId} navigate={navigate} />
+  }
+  if (pathname === '/admin') return <AdminDashboard navigate={navigate} />
+
+  return (
+    <main className="admin-login-page">
+      <AppLink className="back-link" to="/admin" navigate={navigate}>Kembali ke portal admin</AppLink>
+      <ErrorState message="Halaman admin tidak ditemukan." />
+    </main>
+  )
+}
+
+function AdminLogin({ navigate }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function submit(event) {
+    event.preventDefault()
+    setError(null)
+    setSubmitting(true)
+    try {
+      await loginAdmin({ email: email.trim(), password })
+      setPassword('')
+      navigate('/admin')
+    } catch (cause) {
+      setError(cause.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <main className="admin-login-page">
+      <header className="admin-login-header">
+        <AppLink className="brand-lockup" to="/" navigate={navigate} aria-label="Kembali ke CarHub">
+          <span className="brand-mark">C</span>
+          <span><strong>CarHub</strong><small>ADMINISTRATOR</small></span>
+        </AppLink>
+      </header>
+      <section className="admin-login-card">
+        <p className="eyebrow">RUANG OPERASIONAL</p>
+        <h1>Masuk ke portal.</h1>
+        <p className="admin-login-copy">Gunakan akun admin CarHub yang telah dibuat oleh owner.</p>
+        {error && <div className="notice notice-error" role="alert">{error}</div>}
+        <form className="seller-form login-form" onSubmit={submit}>
+          <label className="form-field" htmlFor="admin-email">
+            <span>Email</span>
+            <input
+              id="admin-email"
+              type="email"
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <label className="form-field" htmlFor="admin-password">
+            <span>Kata sandi</span>
+            <input
+              id="admin-password"
+              type="password"
+              autoComplete="current-password"
+              minLength={12}
+              maxLength={128}
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          <button className="button button-primary submit-button" type="submit" disabled={submitting}>
+            {submitting ? 'Memeriksa…' : 'Masuk'}
+          </button>
+        </form>
+        <p className="login-footnote">Tidak ada pendaftaran publik. Hubungi owner CarHub untuk akses.</p>
+      </section>
+    </main>
+  )
+}
