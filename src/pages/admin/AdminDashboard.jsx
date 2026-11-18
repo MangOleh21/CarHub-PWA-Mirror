@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, CarFront, ClipboardList, LogOut, UsersRound } from 'lucide-react'
+import { ArrowUpRight, CarFront, ClipboardList, LogOut, RefreshCw, UsersRound } from 'lucide-react'
 import AppLink from '../../components/AppLink.jsx'
+import BrandMark from '../../components/BrandMark.jsx'
 import { ErrorState, LoadingState } from '../../components/Feedback.jsx'
-import { getAdminSession, logoutAdmin } from '../../services/api.js'
+import ThemeToggle from '../../components/ThemeToggle.jsx'
+import { getAdminDashboardSummary, getAdminSession, logoutAdmin } from '../../services/api.js'
 import AdminCarsPanel from './AdminCarsPanel.jsx'
 import AdminSubmissionsPanel from './AdminSubmissionsPanel.jsx'
 import AdminAccountsPanel from './AdminAccountsPanel.jsx'
@@ -13,11 +15,60 @@ const tabs = [
   { id: 'admins', label: 'Akun admin', Icon: UsersRound, ownerOnly: true },
 ]
 
+function AdminSummaryCards({ revision }) {
+  const [response, setResponse] = useState({ key: null, summary: null, error: null })
+  const [attempt, setAttempt] = useState(0)
+  const requestKey = `${revision}:${attempt}`
+
+  useEffect(() => {
+    let active = true
+    getAdminDashboardSummary()
+      .then((summary) => {
+        if (active) setResponse({ key: requestKey, summary, error: null })
+      })
+      .catch((cause) => {
+        if (active) setResponse({ key: requestKey, summary: null, error: cause.message })
+      })
+    return () => { active = false }
+  }, [requestKey])
+
+  const summary = response.key === requestKey ? response.summary : null
+  const error = response.key === requestKey ? response.error : null
+  const cards = [
+    { label: 'Mobil di katalog', value: summary?.carListings, Icon: CarFront },
+    { label: 'Pengajuan menunggu', value: summary?.pendingSubmissions, Icon: ClipboardList },
+  ]
+
+  return (
+    <section className="admin-summary" aria-label="Ringkasan marketplace" aria-busy={!summary && !error}>
+      {cards.map(({ label, value, Icon }) => (
+        <article className="admin-summary-card" key={label}>
+          <div className="admin-summary-card-top">
+            <span>{label}</span>
+            <Icon size={18} aria-hidden="true" />
+          </div>
+          <strong>{value ?? (error ? '—' : '…')}</strong>
+          <small>Total tercatat</small>
+        </article>
+      ))}
+      {error && (
+        <div className="admin-summary-error" role="alert">
+          <span>Ringkasan tidak dapat dimuat.</span>
+          <button type="button" className="text-button" onClick={() => setAttempt((value) => value + 1)}>
+            <RefreshCw size={14} aria-hidden="true" /> Coba lagi
+          </button>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export default function AdminDashboard({ navigate }) {
   const [session, setSession] = useState(null)
   const [sessionError, setSessionError] = useState(null)
   const [tab, setTab] = useState('cars')
   const [createdAdmins, setCreatedAdmins] = useState([])
+  const [summaryRevision, setSummaryRevision] = useState(0)
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState(null)
 
@@ -57,10 +108,11 @@ export default function AdminDashboard({ navigate }) {
     <div className="admin-shell">
       <header className="admin-header">
         <AppLink className="brand-lockup" to="/" navigate={navigate} aria-label="Kembali ke CarHub">
-          <span className="brand-mark"><CarFront size={21} aria-hidden="true" /></span>
+          <BrandMark />
           <span><strong>CarHub</strong><small>ADMIN CONSOLE</small></span>
         </AppLink>
         <div className="admin-header-actions">
+          <ThemeToggle />
           <div className="admin-identity">
             <span>{session.email}</span>
             <small>{session.role === 'owner' ? 'Owner' : 'Admin'}</small>
@@ -81,6 +133,7 @@ export default function AdminDashboard({ navigate }) {
         </div>
 
         {logoutError && <p className="notice notice-error" role="alert">{logoutError}</p>}
+        <AdminSummaryCards revision={summaryRevision} />
 
         <nav className="admin-tabs" aria-label="Bagian portal admin">
           {visibleTabs.map(({ id, label, Icon }) => (
@@ -96,8 +149,12 @@ export default function AdminDashboard({ navigate }) {
           ))}
         </nav>
 
-        {activeTab === 'cars' && <AdminCarsPanel navigate={navigate} />}
-        {activeTab === 'submissions' && <AdminSubmissionsPanel />}
+        {activeTab === 'cars' && (
+          <AdminCarsPanel navigate={navigate} onDataChange={() => setSummaryRevision((value) => value + 1)} />
+        )}
+        {activeTab === 'submissions' && (
+          <AdminSubmissionsPanel onDataChange={() => setSummaryRevision((value) => value + 1)} />
+        )}
         {activeTab === 'admins' && session.role === 'owner' && (
           <AdminAccountsPanel
             admins={createdAdmins}

@@ -1,7 +1,9 @@
-import { ArrowDownToLine, CarFront } from 'lucide-react'
+import { ArrowDownToLine } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import AppLink from './components/AppLink.jsx'
+import BrandMark from './components/BrandMark.jsx'
 import BottomNav from './components/BottomNav.jsx'
+import ThemeToggle from './components/ThemeToggle.jsx'
 import AdminPortal from './pages/AdminPage.jsx'
 import ProfilePage from './pages/AboutPage.jsx'
 import CatalogPage from './pages/CatalogPage.jsx'
@@ -117,11 +119,11 @@ export default function App() {
     <div className="app-shell">
       <header className="site-header">
         <AppLink className="brand-lockup" to="/" navigate={navigate} aria-label="CarHub, ke katalog">
-          <span className="brand-mark"><CarFront size={21} aria-hidden="true" /></span>
+          <BrandMark />
           <span><strong>CarHub</strong><small>Mobility, curated.</small></span>
         </AppLink>
         <div className="header-actions">
-          <AppLink className="admin-link" to="/admin/login" navigate={navigate}>Portal admin</AppLink>
+          <ThemeToggle />
           <InstallPrompt />
         </div>
       </header>

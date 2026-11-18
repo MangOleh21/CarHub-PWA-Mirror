@@ -1,6 +1,10 @@
 import { useState } from 'react'
+import { CircleAlert } from 'lucide-react'
 import AppLink from '../components/AppLink.jsx'
+import BrandMark from '../components/BrandMark.jsx'
 import { ErrorState } from '../components/Feedback.jsx'
+import ThemeToggle from '../components/ThemeToggle.jsx'
+import { getAdminLoginErrorMessage } from '../lib/admin-login.js'
 import AdminDashboard from './admin/AdminDashboard.jsx'
 import AdminCarEditor from './admin/AdminCarEditor.jsx'
 import { loginAdmin } from '../services/api.js'
@@ -39,7 +43,7 @@ function AdminLogin({ navigate }) {
       setPassword('')
       navigate('/admin')
     } catch (cause) {
-      setError(cause.message)
+      setError(getAdminLoginErrorMessage(cause))
     } finally {
       setSubmitting(false)
     }
@@ -49,15 +53,21 @@ function AdminLogin({ navigate }) {
     <main className="admin-login-page">
       <header className="admin-login-header">
         <AppLink className="brand-lockup" to="/" navigate={navigate} aria-label="Kembali ke CarHub">
-          <span className="brand-mark">C</span>
+          <BrandMark />
           <span><strong>CarHub</strong><small>ADMINISTRATOR</small></span>
         </AppLink>
+        <ThemeToggle />
       </header>
       <section className="admin-login-card">
         <p className="eyebrow">RUANG OPERASIONAL</p>
         <h1>Masuk ke portal.</h1>
         <p className="admin-login-copy">Gunakan akun admin CarHub yang telah dibuat oleh owner.</p>
-        {error && <div className="notice notice-error" role="alert">{error}</div>}
+        {error && (
+          <div className="notice notice-error login-error" role="alert" aria-atomic="true">
+            <CircleAlert size={18} aria-hidden="true" />
+            <span>{error}</span>
+          </div>
+        )}
         <form className="seller-form login-form" onSubmit={submit}>
           <label className="form-field" htmlFor="admin-email">
             <span>Email</span>

@@ -108,7 +108,7 @@ function SubmissionCard({ submission, onReview, busy }) {
   )
 }
 
-export default function AdminSubmissionsPanel() {
+export default function AdminSubmissionsPanel({ onDataChange }) {
   const [status, setStatus] = useState('pending')
   const [page, setPage] = useState(1)
   const [requestKey, setRequestKey] = useState(0)
@@ -134,6 +134,7 @@ export default function AdminSubmissionsPanel() {
     try {
       await reviewSubmission(id, decision, input)
       setRequestKey((key) => key + 1)
+      onDataChange()
     } catch (cause) {
       setActionError(cause.message)
       throw cause

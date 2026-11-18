@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getImageFileError } from '../lib/image-upload.js'
 
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:5000/api')
   .replace(/\/+$/, '')
@@ -201,6 +202,67 @@ export function logoutAdmin() {
 
 export function getAdminCars(options) {
   return list('/admin/cars', options, parseCar)
+}
+
+export async function uploadImageFile(file, kind) {
+  const fileError = getImageFileError(file)
+  if (fileError) throw new ApiError(422, 'INVALID_IMAGE', fileError)
+  if (!['cars', 'submissions'].includes(kind)) {
+    throw new TypeError('Image upload kind must be cars or submissions.')
+  }
+
+  const path = kind === 'cars' ? '/admin/uploads/cars' : '/uploads/submissions'
+  const payload = readData(await request(path, {
+    method: 'POST',
+    body: { contentType: file.type, size: file.size },
+  }))
+  let uploadUrl
+  let imageUrl
+  try {
+    uploadUrl = new URL(payload.uploadUrl)
+    imageUrl = new URL(payload.imageUrl)
+  } catch {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Data upload foto dari server tidak valid.')
+  }
+  if (uploadUrl.protocol !== 'https:'
+    || !uploadUrl.hostname.endsWith('.public.blob.vercel-storage.com')
+    || imageUrl.protocol !== 'https:'
+    || imageUrl.origin !== uploadUrl.origin
+    || imageUrl.pathname !== uploadUrl.pathname
+    || imageUrl.search
+    || imageUrl.hash) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Data upload foto dari server tidak valid.')
+  }
+
+  let response
+  try {
+    response = await fetch(uploadUrl.toString(), {
+      method: 'PUT',
+      body: file,
+      headers: { 'Content-Type': file.type },
+      credentials: 'omit',
+    })
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new ApiError(0, 'NETWORK_ERROR', 'Koneksi ke penyimpanan foto gagal. Periksa koneksi lalu coba lagi.')
+    }
+    throw error
+  }
+  if (!response.ok) {
+    throw new ApiError(response.status, 'IMAGE_UPLOAD_FAILED', 'Foto gagal diunggah. Silakan coba lagi.')
+  }
+  return imageUrl.toString()
+}
+
+export async function getAdminDashboardSummary() {
+  const [cars, submissions] = await Promise.all([
+    getAdminCars({ page: 1, pageSize: 1 }),
+    getAdminSubmissions({ page: 1, pageSize: 1, status: 'pending' }),
+  ])
+  return {
+    carListings: cars.pagination.totalItems,
+    pendingSubmissions: submissions.pagination.totalItems,
+  }
 }
 
 export async function getAdminCar(id) {

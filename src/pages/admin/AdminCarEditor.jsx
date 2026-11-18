@@ -2,7 +2,10 @@ import { ArrowLeft, Save } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import AppLink from '../../components/AppLink.jsx'
 import { ErrorState, LoadingState } from '../../components/Feedback.jsx'
-import { createCar, getAdminCar, getAdminSession, updateCar } from '../../services/api.js'
+import ImageUploader from '../../components/ImageUploader.jsx'
+import ThemeToggle from '../../components/ThemeToggle.jsx'
+import { useImageFileSelection } from '../../hooks/useImageFileSelection.js'
+import { createCar, getAdminCar, getAdminSession, updateCar, uploadImageFile } from '../../services/api.js'
 
 const EMPTY_CAR = {
   brand: '',
@@ -29,10 +32,13 @@ function carToForm(car) {
   }
 }
 
-function validateCar(form) {
+function validateCar(form, hasSelectedImage, hasImageError) {
   const errors = {}
-  for (const field of ['brand', 'model', 'year', 'mileage', 'price', 'imageUrl', 'sellerName', 'sellerPhone', 'location']) {
+  for (const field of ['brand', 'model', 'year', 'mileage', 'price', 'sellerName', 'sellerPhone', 'location']) {
     if (!String(form[field]).trim()) errors[field] = 'Bagian ini wajib diisi.'
+  }
+  if (!form.imageUrl.trim() && !hasSelectedImage && !hasImageError) {
+    errors.imageUrl = 'Pilih foto atau masukkan URL HTTPS.'
   }
   if (form.year && (!Number.isInteger(Number(form.year)) || Number(form.year) < 1886 || Number(form.year) > 2100)) {
     errors.year = 'Tahun harus berada pada rentang 1886–2100.'
@@ -47,7 +53,7 @@ function validateCar(form) {
   if (form.sellerPhone && !/^\+?\d[\d\s()-]{7,19}$/.test(form.sellerPhone.trim())) {
     errors.sellerPhone = 'Gunakan nomor telepon yang valid.'
   }
-  if (form.imageUrl) {
+  if (form.imageUrl && !hasSelectedImage) {
     try {
       if (new URL(form.imageUrl).protocol !== 'https:') errors.imageUrl = 'Tautan foto harus menggunakan HTTPS.'
     } catch {
@@ -81,9 +87,17 @@ export default function AdminCarEditor({ carId, navigate }) {
   const [loaded, setLoaded] = useState({ status: 'loading', car: null, error: null })
   const [draft, setDraft] = useState(null)
   const [errors, setErrors] = useState({})
+  const [saveError, setSaveError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const {
+    selection: imageSelection,
+    error: imageError,
+    inputRef: imageInputRef,
+    selectFile,
+    clearSelection,
+  } = useImageFileSelection()
   const errorSummary = useRef(null)
-  const errorCount = Object.keys(errors).length
+  const errorCount = Object.keys(errors).length + (imageError ? 1 : 0)
   const form = draft ?? (loaded.car ? carToForm(loaded.car) : EMPTY_CAR)
 
   useEffect(() => {
@@ -114,12 +128,19 @@ export default function AdminCarEditor({ carId, navigate }) {
 
   async function submit(event) {
     event.preventDefault()
-    const validationErrors = validateCar(form)
+    setSaveError(null)
+    const validationErrors = validateCar(form, Boolean(imageSelection), Boolean(imageError))
     setErrors(validationErrors)
-    if (Object.keys(validationErrors).length) return
+    if (Object.keys(validationErrors).length || imageError) return
 
     setSubmitting(true)
     try {
+      let imageUrl = form.imageUrl.trim()
+      if (imageSelection) {
+        imageUrl = await uploadImageFile(imageSelection.file, 'cars')
+        setDraft((current) => ({ ...(current ?? form), imageUrl }))
+        clearSelection()
+      }
       const payload = {
         brand: form.brand.trim(),
         model: form.model.trim(),
@@ -128,7 +149,7 @@ export default function AdminCarEditor({ carId, navigate }) {
         fuelType: form.fuelType.trim() || 'Bensin',
         mileage: Number(form.mileage),
         price: Number(form.price),
-        imageUrl: form.imageUrl.trim(),
+        imageUrl,
         sellerName: form.sellerName.trim(),
         sellerPhone: form.sellerPhone.trim(),
         location: form.location.trim(),
@@ -138,7 +159,7 @@ export default function AdminCarEditor({ carId, navigate }) {
       else await createCar(payload)
       navigate('/admin')
     } catch (error) {
-      setLoaded((current) => ({ ...current, error: error.message }))
+      setSaveError(error.message)
     } finally {
       setSubmitting(false)
     }
@@ -155,6 +176,7 @@ export default function AdminCarEditor({ carId, navigate }) {
     <div className="admin-shell">
       <header className="admin-editor-header">
         <AppLink className="back-link" to="/admin" navigate={navigate}><ArrowLeft size={17} /> Kembali ke dashboard</AppLink>
+        <ThemeToggle />
       </header>
       <main className="admin-editor-main">
         <div className="admin-title-row">
@@ -163,7 +185,7 @@ export default function AdminCarEditor({ carId, navigate }) {
             <h1>{carId ? 'Edit listing' : 'Tambah mobil'}</h1>
           </div>
         </div>
-        {loaded.error && <p className="notice notice-error" role="alert">{loaded.error}</p>}
+        {saveError && <p className="notice notice-error" role="alert">{saveError}</p>}
         <form className="seller-form admin-car-form" onSubmit={submit} noValidate>
           {errorCount > 0 && (
             <div className="notice notice-error form-error-summary" role="alert" tabIndex="-1" ref={errorSummary}>
@@ -186,8 +208,27 @@ export default function AdminCarEditor({ carId, navigate }) {
               <EditorField name="fuelType" label="Bahan bakar" value={form.fuelType} onChange={updateField} maxLength={50} />
               <EditorField name="mileage" label="Jarak tempuh (km)" type="number" min="0" max="2147483647" value={form.mileage} onChange={updateField} error={errors.mileage} />
               <EditorField name="price" label="Harga (Rp)" type="number" min="1" step="1" value={form.price} onChange={updateField} error={errors.price} />
-              <EditorField name="imageUrl" label="URL foto HTTPS" type="url" value={form.imageUrl} onChange={updateField} error={errors.imageUrl} />
             </div>
+            <ImageUploader
+              id="car-image-file"
+              selection={imageSelection}
+              imageUrl={form.imageUrl}
+              alt={`Pratinjau foto ${form.brand} ${form.model}`}
+              error={imageError}
+              disabled={submitting}
+              uploading={submitting && Boolean(imageSelection)}
+              inputRef={imageInputRef}
+              onSelectFile={selectFile}
+              onRemove={clearSelection}
+            />
+            <EditorField
+              name="imageUrl"
+              label="URL foto HTTPS (alternatif)"
+              type="url"
+              value={form.imageUrl}
+              onChange={updateField}
+              error={errors.imageUrl}
+            />
           </fieldset>
           <fieldset>
             <legend>Informasi penjual</legend>

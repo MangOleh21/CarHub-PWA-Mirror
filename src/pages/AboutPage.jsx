@@ -43,6 +43,17 @@ export default function AboutPage() {
         <p>Setiap listing menampilkan harga, tahun, jarak tempuh, transmisi, dan lokasi. Simpan mobil favorit di perangkat Anda, lalu lanjutkan percakapan langsung dengan penjual melalui WhatsApp.</p>
       </section>
 
+      <section className="about-section" aria-labelledby="tech-stack-title">
+        <p className="eyebrow">TEKNOLOGI</p>
+        <h2 id="tech-stack-title">Dibangun dengan.</h2>
+        <dl className="profile-details">
+          <div><dt>Frontend</dt><dd>React · Vite</dd></div>
+          <div><dt>Backend</dt><dd>Node.js · Express</dd></div>
+          <div><dt>Database</dt><dd>Neon · PostgreSQL</dd></div>
+          <div><dt>Platform</dt><dd>Progressive Web App</dd></div>
+        </dl>
+      </section>
+
       <section className="install-guide">
         <div className="install-guide-icon"><Smartphone size={22} aria-hidden="true" /></div>
         <div>

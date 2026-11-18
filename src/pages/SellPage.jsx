@@ -1,6 +1,8 @@
 import { ArrowRight, Check, CircleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { createSubmission } from '../services/api.js'
+import ImageUploader from '../components/ImageUploader.jsx'
+import { useImageFileSelection } from '../hooks/useImageFileSelection.js'
+import { createSubmission, uploadImageFile } from '../services/api.js'
 
 const EMPTY_FORM = {
   sellerName: '',
@@ -16,12 +18,15 @@ const EMPTY_FORM = {
   description: '',
 }
 
-function validate(form) {
+function validate(form, hasSelectedImage, hasImageError) {
   const errors = {}
-  const required = ['sellerName', 'sellerPhone', 'brand', 'model', 'year', 'mileage', 'expectedPrice', 'location', 'imageUrl']
+  const required = ['sellerName', 'sellerPhone', 'brand', 'model', 'year', 'mileage', 'expectedPrice', 'location']
   required.forEach((field) => {
     if (!String(form[field]).trim()) errors[field] = 'Bagian ini wajib diisi.'
   })
+  if (!form.imageUrl.trim() && !hasSelectedImage && !hasImageError) {
+    errors.imageUrl = 'Pilih foto atau masukkan URL HTTPS.'
+  }
 
   if (form.sellerPhone && !/^\+?\d[\d\s()-]{7,19}$/.test(form.sellerPhone.trim())) {
     errors.sellerPhone = 'Gunakan nomor telepon yang valid.'
@@ -38,7 +43,7 @@ function validate(form) {
     || Number(form.expectedPrice) <= 0)) {
     errors.expectedPrice = 'Harga harus berupa angka positif.'
   }
-  if (form.imageUrl) {
+  if (form.imageUrl && !hasSelectedImage) {
     try {
       if (new URL(form.imageUrl).protocol !== 'https:') errors.imageUrl = 'Tautan foto harus menggunakan HTTPS.'
     } catch {
@@ -74,8 +79,15 @@ export default function SellPage() {
   const [message, setMessage] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [contactConsent, setContactConsent] = useState(false)
+  const {
+    selection: imageSelection,
+    error: imageError,
+    inputRef: imageInputRef,
+    selectFile,
+    clearSelection,
+  } = useImageFileSelection()
   const errorSummary = useRef(null)
-  const errorCount = Object.keys(errors).length
+  const errorCount = Object.keys(errors).length + (imageError ? 1 : 0)
 
   useEffect(() => {
     if (errorCount) errorSummary.current?.focus()
@@ -89,13 +101,19 @@ export default function SellPage() {
   async function submit(event) {
     event.preventDefault()
     setMessage(null)
-    const validationErrors = validate(form)
+    const validationErrors = validate(form, Boolean(imageSelection), Boolean(imageError))
     if (!contactConsent) validationErrors.contactConsent = 'Persetujuan ini diperlukan untuk mengirim pengajuan.'
     setErrors(validationErrors)
-    if (Object.keys(validationErrors).length) return
+    if (Object.keys(validationErrors).length || imageError) return
 
     setSubmitting(true)
     try {
+      let imageUrl = form.imageUrl.trim()
+      if (imageSelection) {
+        imageUrl = await uploadImageFile(imageSelection.file, 'submissions')
+        setForm((current) => ({ ...current, imageUrl }))
+        clearSelection()
+      }
       const result = await createSubmission({
         ...form,
         sellerName: form.sellerName.trim(),
@@ -106,11 +124,12 @@ export default function SellPage() {
         mileage: Number(form.mileage),
         expectedPrice: Number(form.expectedPrice),
         location: form.location.trim(),
-        imageUrl: form.imageUrl.trim(),
+        imageUrl,
         description: form.description.trim() || undefined,
       })
       setMessage({ type: 'success', id: result.id })
       setForm(EMPTY_FORM)
+      clearSelection()
       setErrors({})
       setContactConsent(false)
     } catch (error) {
@@ -177,7 +196,27 @@ export default function SellPage() {
         <fieldset>
           <legend>Foto & deskripsi</legend>
           <div className="form-grid form-grid-single">
-            <Field name="imageUrl" label="URL foto kendaraan (HTTPS)" type="url" placeholder="https://..." value={form.imageUrl} onChange={updateField} error={errors.imageUrl} />
+            <ImageUploader
+              id="submission-image-file"
+              selection={imageSelection}
+              imageUrl={form.imageUrl}
+              alt="Pratinjau foto mobil yang akan diajukan"
+              error={imageError}
+              disabled={submitting}
+              uploading={submitting && Boolean(imageSelection)}
+              inputRef={imageInputRef}
+              onSelectFile={selectFile}
+              onRemove={clearSelection}
+            />
+            <Field
+              name="imageUrl"
+              label="URL foto HTTPS (alternatif)"
+              type="url"
+              placeholder="https://..."
+              value={form.imageUrl}
+              onChange={updateField}
+              error={errors.imageUrl}
+            />
             <label className="form-field" htmlFor="submission-description">
               <span>Deskripsi <small>Opsional</small></span>
               <textarea

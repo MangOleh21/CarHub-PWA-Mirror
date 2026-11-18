@@ -7,7 +7,7 @@ import { deleteCar, getAdminCars } from '../../services/api.js'
 
 const PAGE_SIZE = 20
 
-export default function AdminCarsPanel({ navigate }) {
+export default function AdminCarsPanel({ navigate, onDataChange }) {
   const [page, setPage] = useState(1)
   const [requestKey, setRequestKey] = useState(0)
   const [response, setResponse] = useState({ key: -1, result: null, error: null })
@@ -37,6 +37,7 @@ export default function AdminCarsPanel({ navigate }) {
     try {
       await deleteCar(car.id)
       setRequestKey((key) => key + 1)
+      onDataChange()
     } catch (cause) {
       setActionError(cause.message)
     } finally {

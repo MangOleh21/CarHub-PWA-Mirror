@@ -4,6 +4,34 @@ CarHub adalah aplikasi web progresif berbasis React untuk menjelajahi iklan mobi
 
 Dibuat oleh Galileo Athari Muhammad (21120124130099) untuk Tugas Akhir Praktikum Pemrograman Perangkat Bergerak 2026.
 
+## Deskripsi dan fitur
+
+CarHub membantu calon pembeli menjelajahi mobil bekas dan menghubungi penjual secara langsung, sekaligus menyediakan alur pengajuan listing yang ditinjau admin. Fitur publik dapat digunakan tanpa membuat akun.
+
+- **Katalog mobil:** cari berdasarkan merk atau model, filter merk, dan jelajahi daftar berhalaman.
+- **Detail mobil:** lihat foto, harga, spesifikasi, lokasi, dan deskripsi; hubungi penjual melalui WhatsApp dengan pesan yang sudah disiapkan.
+- **Wishlist:** simpan mobil favorit di browser dan buka kembali detailnya kapan saja.
+- **Pengajuan penjualan:** kirim informasi kendaraan untuk ditinjau admin. Foto dapat dipilih dari perangkat atau menggunakan URL HTTPS; listing yang disetujui akan ditampilkan di katalog.
+- **Portal admin:** kelola listing mobil, tinjau pengajuan, serta kelola akun admin sesuai peran. Dapat diakses [di sini](https://carhub-id.vercel.app/admin). Untuk keperluan demo, login menggunakan akun berikut:
+    ```
+    User: rootadmin@carhub.co.id  
+    Password: AdminCarhub123!
+    ```
+- **PWA dan tema:** instal CarHub di perangkat, gunakan tampilan tema sistem/terang/gelap, dan akses app shell yang tersimpan oleh service worker. Data API tetap memerlukan koneksi ke backend.
+
+## Teknologi yang digunakan
+
+| Bagian | Teknologi |
+|---|---|
+| Frontend | React 19 dan Vite 8 |
+| Tampilan dan ikon | CSS responsif dan Lucide React |
+| Komunikasi API | Axios |
+| PWA | `vite-plugin-pwa` (manifest dan service worker) |
+| Backend | Node.js 22+ dan Express 5 |
+| Database | Neon PostgreSQL melalui `pg` |
+| Penyimpanan foto | Vercel Blob |
+| Sesi admin | Cookie `HttpOnly` yang dikelola backend |
+
 ## Mulai cepat
 
 Jalankan backend dan frontend di terminal terpisah. Untuk penyiapan backend pertama kali, konfigurasi database, dan migrasi, ikuti [README backend](https://github.com/InnovaReborn1TR/CarHub-API/blob/main/README.md).
