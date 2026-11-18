@@ -29,7 +29,7 @@ CarHub membantu calon pembeli menjelajahi mobil bekas dan menghubungi penjual se
 | PWA | `vite-plugin-pwa` (manifest dan service worker) |
 | Backend | Node.js 22+ dan Express 5 |
 | Database | Neon PostgreSQL melalui `pg` |
-| Penyimpanan foto | Vercel Blob |
+| Penyimpanan foto | Cloudinary (upload langsung bertanda tangan dari browser) |
 | Sesi admin | Cookie `HttpOnly` yang dikelola backend |
 
 ## Mulai cepat

@@ -150,23 +150,39 @@ test('admin dashboard summary propagates API failures for visible error handling
   )
 })
 
-test('image upload requests a scoped URL and sends file bytes without API credentials', async () => {
+test('image upload sends the file directly to Cloudinary with server-signed fields', async () => {
   const requests = []
-  const presignedUrl = 'https://store.public.blob.vercel-storage.com/submissions/upload.png?signature=temporary'
-  const imageUrl = 'https://store.public.blob.vercel-storage.com/submissions/upload.png'
+  const uploadUrl = 'https://api.cloudinary.com/v1_1/carhub-demo/image/upload'
+  const imageUrl = 'https://res.cloudinary.com/carhub-demo/image/upload/v123/carhub/submissions/upload.png'
+  const uploadFields = {
+    api_key: 'public-key',
+    asset_folder: 'carhub/submissions',
+    allowed_formats: 'jpg,png,webp',
+    overwrite: false,
+    public_id: 'upload-id',
+    signature: 'signed-upload',
+    timestamp: 123,
+    upload_preset: 'carhub-signed',
+  }
   globalThis.fetch = async (input, options) => {
-    const requestUrl = input instanceof Request ? input.url : input
-    const requestOptions = input instanceof Request ? input : options
-    if (requestUrl === presignedUrl) {
-      requests.push({ url: requestUrl, options: requestOptions })
-      return new Response(null, { status: 201 })
+    const request = input instanceof Request ? input : new Request(input, options)
+    if (request.url === uploadUrl) {
+      const body = await request.formData()
+      requests.push({ url: request.url, options: request, body })
+      return new Response(JSON.stringify({
+        secure_url: imageUrl,
+        public_id: 'upload-id',
+        format: 'png',
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
     }
 
-    const request = input instanceof Request ? input : new Request(input, options)
-    requests.push({ url: requestUrl, options: requestOptions, body: await request.json() })
+    requests.push({ url: request.url, options: request, body: await request.json() })
     return new Response(JSON.stringify({
       success: true,
-      data: { uploadUrl: presignedUrl, imageUrl },
+      data: { uploadUrl, uploadFields },
     }), { status: 200 })
   }
   const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'photo.png', {
@@ -179,8 +195,49 @@ test('image upload requests a scoped URL and sends file bytes without API creden
   assert.equal(requests[0].url, 'http://localhost:5000/api/uploads/submissions')
   assert.deepEqual(requests[0].body, { contentType: 'image/png', size: file.size })
   assert.equal(requests[0].options.credentials, 'include')
-  assert.equal(requests[1].url, presignedUrl)
-  assert.equal(requests[1].options.method, 'PUT')
+  assert.equal(requests[1].url, uploadUrl)
+  assert.equal(requests[1].options.method, 'POST')
   assert.equal(requests[1].options.credentials, 'omit')
-  assert.equal(requests[1].options.body, file)
+  assert.equal(requests[1].body.get('file').name, 'photo.png')
+  assert.equal(requests[1].body.get('api_key'), 'public-key')
+  assert.equal(requests[1].body.get('signature'), 'signed-upload')
+  assert.equal(requests[1].body.get('overwrite'), 'false')
+  assert.equal(requests[1].body.get('upload_preset'), 'carhub-signed')
+})
+
+test('image upload rejects a Cloudinary response URL from another host', async () => {
+  const uploadUrl = 'https://api.cloudinary.com/v1_1/carhub-demo/image/upload'
+  const uploadFields = {
+    api_key: 'public-key',
+    asset_folder: 'carhub/submissions',
+    allowed_formats: 'jpg,png,webp',
+    overwrite: false,
+    public_id: 'upload-id',
+    signature: 'signed-upload',
+    timestamp: 123,
+    upload_preset: 'carhub-signed',
+  }
+  globalThis.fetch = async (input, options) => {
+    const request = input instanceof Request ? input : new Request(input, options)
+    if (request.url === uploadUrl) {
+      return new Response(JSON.stringify({
+        secure_url: 'https://attacker.example/car.png',
+        public_id: 'upload-id',
+        format: 'png',
+      }), { status: 200 })
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: { uploadUrl, uploadFields },
+    }), { status: 200 })
+  }
+  const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'photo.png', {
+    type: 'image/png',
+  })
+
+  await assert.rejects(
+    uploadImageFile(file, 'submissions'),
+    (error) => error instanceof ApiError && error.code === 'INVALID_RESPONSE',
+  )
 })

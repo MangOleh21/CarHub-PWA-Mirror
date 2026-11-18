@@ -217,29 +217,55 @@ export async function uploadImageFile(file, kind) {
     body: { contentType: file.type, size: file.size },
   }))
   let uploadUrl
-  let imageUrl
   try {
     uploadUrl = new URL(payload.uploadUrl)
-    imageUrl = new URL(payload.imageUrl)
   } catch {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data upload foto dari server tidak valid.')
   }
+  const cloudNameMatch = /^\/v1_1\/([A-Za-z0-9_-]+)\/image\/upload$/.exec(uploadUrl.pathname)
+  const fields = payload.uploadFields
+  const expectedFolder = `carhub/${kind}`
   if (uploadUrl.protocol !== 'https:'
-    || !uploadUrl.hostname.endsWith('.public.blob.vercel-storage.com')
-    || imageUrl.protocol !== 'https:'
-    || imageUrl.origin !== uploadUrl.origin
-    || imageUrl.pathname !== uploadUrl.pathname
-    || imageUrl.search
-    || imageUrl.hash) {
+    || uploadUrl.origin !== 'https://api.cloudinary.com'
+    || uploadUrl.search
+    || uploadUrl.hash
+    || !cloudNameMatch
+    || !fields
+    || typeof fields.api_key !== 'string'
+    || !fields.api_key
+    || !Number.isInteger(fields.timestamp)
+    || typeof fields.signature !== 'string'
+    || !fields.signature
+    || typeof fields.public_id !== 'string'
+    || !fields.public_id
+    || fields.asset_folder !== expectedFolder
+    || typeof fields.upload_preset !== 'string'
+    || !fields.upload_preset
+    || fields.overwrite !== false
+    || fields.allowed_formats !== 'jpg,png,webp') {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data upload foto dari server tidak valid.')
+  }
+
+  const uploadForm = new FormData()
+  uploadForm.append('file', file)
+  for (const field of [
+    'api_key',
+    'asset_folder',
+    'allowed_formats',
+    'overwrite',
+    'public_id',
+    'signature',
+    'timestamp',
+    'upload_preset',
+  ]) {
+    uploadForm.append(field, String(fields[field]))
   }
 
   let response
   try {
-    response = await fetch(uploadUrl.toString(), {
-      method: 'PUT',
-      body: file,
-      headers: { 'Content-Type': file.type },
+    response = await fetch(uploadUrl.href, {
+      method: 'POST',
+      body: uploadForm,
       credentials: 'omit',
     })
   } catch (error) {
@@ -250,6 +276,29 @@ export async function uploadImageFile(file, kind) {
   }
   if (!response.ok) {
     throw new ApiError(response.status, 'IMAGE_UPLOAD_FAILED', 'Foto gagal diunggah. Silakan coba lagi.')
+  }
+
+  let uploadedAsset
+  try {
+    uploadedAsset = await response.json()
+  } catch {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Respons penyimpanan foto tidak valid.')
+  }
+
+  let imageUrl
+  try {
+    imageUrl = new URL(uploadedAsset.secure_url)
+  } catch {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'URL foto dari penyimpanan tidak valid.')
+  }
+  if (uploadedAsset.public_id !== fields.public_id
+    || !['jpg', 'png', 'webp'].includes(uploadedAsset.format)
+    || imageUrl.protocol !== 'https:'
+    || imageUrl.hostname !== 'res.cloudinary.com'
+    || !imageUrl.pathname.startsWith(`/${cloudNameMatch[1]}/image/upload/`)
+    || imageUrl.search
+    || imageUrl.hash) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'URL foto dari penyimpanan tidak valid.')
   }
   return imageUrl.toString()
 }
