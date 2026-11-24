@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
-import ImagePagination from '../../components/ImagePagination.jsx'
 import { formatPrice } from '../../lib/format.js'
 import { getAdminSubmissions, reviewSubmission } from '../../services/api.js'
 
@@ -12,9 +11,6 @@ function SubmissionCard({ submission, onReview, busy }) {
   const [location, setLocation] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [error, setError] = useState(null)
-  const submissionPhotos = Array.isArray(submission.images) && submission.images.length > 0
-    ? submission.images
-    : (submission.imageUrl ? [submission.imageUrl] : [])
 
   async function review(decision) {
     setError(null)
@@ -61,13 +57,13 @@ function SubmissionCard({ submission, onReview, busy }) {
         <div><dt>Detail</dt><dd>{submission.mileage.toLocaleString('id-ID')} km · {submission.transmission}</dd></div>
         <div><dt>Lokasi</dt><dd>{submission.location || 'Belum diisi'}</dd></div>
       </dl>
-      {submissionPhotos.length > 0 && (
-        <div className="submission-gallery-wrap">
-          <ImagePagination
-            images={submissionPhotos}
-            alt={`Foto ${submission.brand} ${submission.model}`}
-          />
-        </div>
+      {submission.imageUrl && (
+        <img
+          className="submission-image"
+          src={submission.imageUrl}
+          alt={`Foto ${submission.brand} ${submission.model}`}
+          loading="lazy"
+        />
       )}
       {submission.description && <p className="submission-description">{submission.description}</p>}
 
@@ -106,11 +102,6 @@ function SubmissionCard({ submission, onReview, busy }) {
       )}
       {submission.reviewedByEmail && (
         <p className="review-note"><strong>Ditinjau oleh:</strong> {submission.reviewedByEmail}</p>
-      )}
-      {submission.reviewedAt && (
-        <p className="review-note">
-          <strong>Waktu peninjauan:</strong> {new Date(submission.reviewedAt).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}
-        </p>
       )}
       {submission.reviewNote && <p className="review-note"><strong>Catatan:</strong> {submission.reviewNote}</p>}
     </article>

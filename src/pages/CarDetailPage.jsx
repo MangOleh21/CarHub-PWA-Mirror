@@ -2,12 +2,12 @@ import { ArrowLeft, Fuel, Gauge, Heart, MapPin, MessageCircle, Settings2 } from 
 import { useEffect, useState } from 'react'
 import AppLink from '../components/AppLink.jsx'
 import { ErrorState, LoadingState } from '../components/Feedback.jsx'
-import ImagePagination from '../components/ImagePagination.jsx'
 import { formatMileage, formatPrice, whatsappUrl } from '../lib/format.js'
 import { getCar } from '../services/api.js'
 
 export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlist }) {
   const [response, setResponse] = useState({ id: null, car: null, error: null })
+  const [failedImageId, setFailedImageId] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -33,19 +33,21 @@ export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlis
 
   const saved = wishlistIds.includes(car.id)
   const contactLink = buildContactLink(car)
-  const carImages = Array.isArray(car.images) && car.images.length > 0
-    ? car.images
-    : (car.imageUrl ? [car.imageUrl] : [])
 
   return (
     <main className="page-content detail-page">
       <AppLink className="back-link" to="/" navigate={navigate}><ArrowLeft size={17} /> Kembali ke katalog</AppLink>
-
-      <ImagePagination
-        images={carImages}
-        alt={`${car.brand} ${car.model}`}
-        label={`${car.year} · ${car.transmission}`}
-      />
+      <div className="detail-image-wrap">
+        {failedImageId !== car.id && (
+          <img
+            src={car.imageUrl}
+            alt={`${car.brand} ${car.model}`}
+            onError={() => setFailedImageId(car.id)}
+          />
+        )}
+        {failedImageId === car.id && <div className="car-image-fallback" aria-hidden="true">CarHub</div>}
+        <span className="detail-image-label">{car.year} · {car.transmission}</span>
+      </div>
 
       <section className="detail-heading">
         <div>
@@ -99,7 +101,7 @@ function buildContactLink(car) {
   try {
     return whatsappUrl(
       car.sellerPhone,
-      `Halo ${car.sellerName}, saya tertarik dengan mobil ${car.brand} ${car.model} (${car.year}) yang diiklankan di CarHub seharga ${formatPrice(car.price)}. Apakah unit ini masih tersedia?`,
+      `Halo ${car.sellerName}, saya tertarik dengan ${car.brand} ${car.model} tahun ${car.year} di CarHub. Apakah mobil ini masih tersedia?`,
     )
   } catch {
     return null

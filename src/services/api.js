@@ -79,9 +79,6 @@ function parseCar(value) {
   if (!isValid) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data mobil dari server tidak sesuai kontrak API.')
   }
-  value.images = Array.isArray(value.images) && value.images.length > 0
-    ? value.images
-    : (value.imageUrl ? [value.imageUrl] : [])
   return value
 }
 
@@ -103,9 +100,6 @@ function parseSubmission(value) {
   if (!isValid) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data pengajuan dari server tidak sesuai kontrak API.')
   }
-  value.images = Array.isArray(value.images) && value.images.length > 0
-    ? value.images
-    : (value.imageUrl ? [value.imageUrl] : [])
   return value
 }
 
@@ -158,29 +152,11 @@ function parsePagination(payload) {
   return pagination
 }
 
-function listQuery({
-  search,
-  brand,
-  status,
-  transmission,
-  minPrice,
-  maxPrice,
-  minYear,
-  maxYear,
-  sort,
-  page = 1,
-  pageSize = 20,
-} = {}) {
+function listQuery({ search, brand, status, page = 1, pageSize = 20 } = {}) {
   const params = new URLSearchParams()
   if (search?.trim()) params.set('search', search.trim())
   if (brand?.trim()) params.set('brand', brand.trim())
   if (status) params.set('status', status)
-  if (transmission) params.set('transmission', transmission)
-  if (minPrice !== undefined && minPrice !== '' && minPrice !== null) params.set('minPrice', String(minPrice))
-  if (maxPrice !== undefined && maxPrice !== '' && maxPrice !== null) params.set('maxPrice', String(maxPrice))
-  if (minYear !== undefined && minYear !== '' && minYear !== null) params.set('minYear', String(minYear))
-  if (maxYear !== undefined && maxYear !== '' && maxYear !== null) params.set('maxYear', String(maxYear))
-  if (sort) params.set('sort', sort)
   params.set('page', String(page))
   params.set('pageSize', String(pageSize))
   return `?${params.toString()}`
@@ -375,14 +351,6 @@ export async function reviewSubmission(id, decision, input = {}) {
     submission: parseReviewedSubmission(data?.submission),
     car: data?.car ?? null,
   }
-}
-
-export async function getAdminUsers() {
-  const data = readData(await request('/admin/users'))
-  if (!Array.isArray(data?.admins)) {
-    throw new ApiError(502, 'INVALID_RESPONSE', 'Data akun admin dari server tidak valid.')
-  }
-  return data.admins.map(parseManagedAdmin)
 }
 
 export async function createAdminUser(input) {

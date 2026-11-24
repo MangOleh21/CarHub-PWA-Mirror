@@ -1,7 +1,7 @@
 import { ArrowRight, Check, CircleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import MultiImageUploader from '../components/MultiImageUploader.jsx'
-import { useMultiImageSelection } from '../hooks/useMultiImageSelection.js'
+import ImageUploader from '../components/ImageUploader.jsx'
+import { useImageFileSelection } from '../hooks/useImageFileSelection.js'
 import { createSubmission, uploadImageFile } from '../services/api.js'
 
 const EMPTY_FORM = {
@@ -18,14 +18,14 @@ const EMPTY_FORM = {
   description: '',
 }
 
-function validate(form, hasSelectedImages, hasImageError) {
+function validate(form, hasSelectedImage, hasImageError) {
   const errors = {}
   const required = ['sellerName', 'sellerPhone', 'brand', 'model', 'year', 'mileage', 'expectedPrice', 'location']
   required.forEach((field) => {
     if (!String(form[field]).trim()) errors[field] = 'Bagian ini wajib diisi.'
   })
-  if (!form.imageUrl.trim() && !hasSelectedImages && !hasImageError) {
-    errors.imageUrl = 'Pilih minimal satu foto atau masukkan URL HTTPS.'
+  if (!form.imageUrl.trim() && !hasSelectedImage && !hasImageError) {
+    errors.imageUrl = 'Pilih foto atau masukkan URL HTTPS.'
   }
 
   if (form.sellerPhone && !/^\+?\d[\d\s()-]{7,19}$/.test(form.sellerPhone.trim())) {
@@ -43,7 +43,7 @@ function validate(form, hasSelectedImages, hasImageError) {
     || Number(form.expectedPrice) <= 0)) {
     errors.expectedPrice = 'Harga harus berupa angka positif.'
   }
-  if (form.imageUrl && !hasSelectedImages) {
+  if (form.imageUrl && !hasSelectedImage) {
     try {
       if (new URL(form.imageUrl).protocol !== 'https:') errors.imageUrl = 'Tautan foto harus menggunakan HTTPS.'
     } catch {
@@ -80,13 +80,12 @@ export default function SellPage() {
   const [submitting, setSubmitting] = useState(false)
   const [contactConsent, setContactConsent] = useState(false)
   const {
-    selections: imageSelections,
+    selection: imageSelection,
     error: imageError,
     inputRef: imageInputRef,
-    addFiles,
-    removeFile,
-    clearFiles,
-  } = useMultiImageSelection()
+    selectFile,
+    clearSelection,
+  } = useImageFileSelection()
   const errorSummary = useRef(null)
   const errorCount = Object.keys(errors).length + (imageError ? 1 : 0)
 
@@ -102,25 +101,19 @@ export default function SellPage() {
   async function submit(event) {
     event.preventDefault()
     setMessage(null)
-    const hasPhotos = imageSelections.length > 0
-    const validationErrors = validate(form, hasPhotos, Boolean(imageError))
+    const validationErrors = validate(form, Boolean(imageSelection), Boolean(imageError))
     if (!contactConsent) validationErrors.contactConsent = 'Persetujuan ini diperlukan untuk mengirim pengajuan.'
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length || imageError) return
 
     setSubmitting(true)
     try {
-      const uploadedUrls = []
-      for (const item of imageSelections) {
-        const url = await uploadImageFile(item.file, 'submissions')
-        uploadedUrls.push(url)
+      let imageUrl = form.imageUrl.trim()
+      if (imageSelection) {
+        imageUrl = await uploadImageFile(imageSelection.file, 'submissions')
+        setForm((current) => ({ ...current, imageUrl }))
+        clearSelection()
       }
-      const primaryUrl = uploadedUrls[0] || form.imageUrl.trim()
-      const allImages = [
-        ...uploadedUrls,
-        ...(form.imageUrl.trim() && !uploadedUrls.includes(form.imageUrl.trim()) ? [form.imageUrl.trim()] : []),
-      ]
-
       const result = await createSubmission({
         ...form,
         sellerName: form.sellerName.trim(),
@@ -131,13 +124,12 @@ export default function SellPage() {
         mileage: Number(form.mileage),
         expectedPrice: Number(form.expectedPrice),
         location: form.location.trim(),
-        imageUrl: primaryUrl,
-        images: allImages,
+        imageUrl,
         description: form.description.trim() || undefined,
       })
       setMessage({ type: 'success', id: result.id })
       setForm(EMPTY_FORM)
-      clearFiles()
+      clearSelection()
       setErrors({})
       setContactConsent(false)
     } catch (error) {
@@ -149,157 +141,76 @@ export default function SellPage() {
 
   return (
     <main className="page-content sell-page">
-      <section className="sell-intro">
-        <p className="eyebrow">PENGAJUAN KURASI MOBIL</p>
-        <h1>Jual mobil Anda<br /><em>di CarHub.</em></h1>
-        <p className="intro-copy">Kirimkan data mobil Anda. Tim CarHub akan memeriksa kelengkapan sebelum mobil tayang ke katalog publik.</p>
+      <section className="page-intro">
+        <p className="eyebrow">JUAL MELALUI CARHUB</p>
+        <h1>Mobil Anda,<br /><em>berikutnya.</em></h1>
+        <p>Kirim detail kendaraan untuk ditinjau tim kurasi. Pengajuan yang disetujui akan tampil di katalog CarHub.</p>
       </section>
 
       {message?.type === 'success' && (
-        <section className="notice notice-success submission-success" aria-live="polite">
-          <Check size={20} aria-hidden="true" />
+        <div className="submission-success" role="status">
+          <span className="success-icon"><Check size={18} aria-hidden="true" /></span>
           <div>
-            <strong>Pengajuan berhasil dikirim</strong>
-            <p>ID pengajuan Anda: <code>#{message.id}</code>. Tim CarHub akan segera meninjau detail dan foto mobil Anda.</p>
+            <strong>Pengajuan telah diterima.</strong>
+            <p>Tim CarHub akan meninjau detail kendaraan Anda. Nomor pengajuan: <span className="mono">#{message.id}</span></p>
           </div>
-        </section>
+        </div>
       )}
-
       {message?.type === 'error' && (
-        <section className="notice notice-error" role="alert">
-          <CircleAlert size={20} aria-hidden="true" />
-          <p>{message.text}</p>
-        </section>
+        <div className="notice notice-error" role="alert"><CircleAlert size={18} aria-hidden="true" /> {message.text}</div>
       )}
 
       <form className="seller-form" onSubmit={submit} noValidate>
-        {Boolean(errorCount) && (
-          <div className="notice notice-error" ref={errorSummary} tabIndex={-1} role="alert" aria-atomic="true">
-            <strong>Periksa kembali formulir Anda</strong>
-            <p>Terdapat {errorCount} bagian yang memerlukan perhatian sebelum pengajuan dapat dikirim.</p>
+        {errorCount > 0 && (
+          <div className="notice notice-error form-error-summary" role="alert" tabIndex="-1" ref={errorSummary}>
+            Periksa kembali {errorCount} bagian yang ditandai sebelum mengirim.
           </div>
         )}
-
-        <fieldset className="form-section">
-          <legend>Data kontak penjual</legend>
+        <fieldset>
+          <legend>Kontak penjual</legend>
           <div className="form-grid">
-            <Field
-              name="sellerName"
-              label="Nama lengkap"
-              maxLength={150}
-              required
-              value={form.sellerName}
-              onChange={updateField}
-              error={errors.sellerName}
-            />
-            <Field
-              name="sellerPhone"
-              label="Nomor WhatsApp"
-              type="tel"
-              placeholder="Contoh: 08123456789"
-              required
-              value={form.sellerPhone}
-              onChange={updateField}
-              error={errors.sellerPhone}
-            />
+            <Field name="sellerName" label="Nama lengkap" autoComplete="name" value={form.sellerName} onChange={updateField} error={errors.sellerName} maxLength={150} />
+            <Field name="sellerPhone" label="Nomor WhatsApp" type="tel" autoComplete="tel" placeholder="08xx atau +62" value={form.sellerPhone} onChange={updateField} error={errors.sellerPhone} maxLength={25} />
+            <Field name="location" label="Kota / lokasi kendaraan" autoComplete="address-level2" placeholder="Contoh: Semarang" value={form.location} onChange={updateField} error={errors.location} maxLength={150} />
           </div>
         </fieldset>
 
-        <fieldset className="form-section">
-          <legend>Spesifikasi kendaraan</legend>
+        <fieldset>
+          <legend>Detail kendaraan</legend>
           <div className="form-grid">
-            <Field
-              name="brand"
-              label="Merk mobil"
-              placeholder="Contoh: Honda"
-              maxLength={100}
-              required
-              value={form.brand}
-              onChange={updateField}
-              error={errors.brand}
-            />
-            <Field
-              name="model"
-              label="Model mobil"
-              placeholder="Contoh: CR-V Turbo"
-              maxLength={100}
-              required
-              value={form.model}
-              onChange={updateField}
-              error={errors.model}
-            />
-            <Field
-              name="year"
-              label="Tahun pembuatan"
-              type="number"
-              min={1886}
-              max={new Date().getFullYear() + 1}
-              required
-              value={form.year}
-              onChange={updateField}
-              error={errors.year}
-            />
+            <Field name="brand" label="Merk" placeholder="Contoh: Toyota" value={form.brand} onChange={updateField} error={errors.brand} maxLength={100} />
+            <Field name="model" label="Model" placeholder="Contoh: Avanza Veloz" value={form.model} onChange={updateField} error={errors.model} maxLength={100} />
+            <Field name="year" label="Tahun" type="number" min="1886" max={new Date().getFullYear() + 1} inputMode="numeric" value={form.year} onChange={updateField} error={errors.year} />
             <label className="form-field" htmlFor="submission-transmission">
               <span>Transmisi</span>
-              <select
-                id="submission-transmission"
-                name="transmission"
-                value={form.transmission}
-                onChange={updateField}
-              >
-                <option value="Manual">Manual</option>
-                <option value="Automatic">Automatic</option>
+              <select id="submission-transmission" name="transmission" value={form.transmission} onChange={updateField}>
+                <option>Manual</option>
+                <option>Automatic</option>
               </select>
             </label>
-            <Field
-              name="mileage"
-              label="Jarak tempuh (km)"
-              type="number"
-              min={0}
-              required
-              value={form.mileage}
-              onChange={updateField}
-              error={errors.mileage}
-            />
-            <Field
-              name="expectedPrice"
-              label="Ekspektasi harga (Rp)"
-              type="number"
-              min={1}
-              required
-              value={form.expectedPrice}
-              onChange={updateField}
-              error={errors.expectedPrice}
-            />
+            <Field name="mileage" label="Jarak tempuh (km)" type="number" min="0" max="2147483647" inputMode="numeric" value={form.mileage} onChange={updateField} error={errors.mileage} />
+            <Field name="expectedPrice" label="Harga yang diharapkan (Rp)" type="number" min="1" step="1" inputMode="numeric" value={form.expectedPrice} onChange={updateField} error={errors.expectedPrice} />
           </div>
-          <Field
-            name="location"
-            label="Lokasi kendaraan"
-            placeholder="Contoh: Jakarta Selatan, DKI Jakarta"
-            maxLength={150}
-            required
-            value={form.location}
-            onChange={updateField}
-            error={errors.location}
-          />
         </fieldset>
 
-        <fieldset className="form-section">
-          <legend>Foto dan catatan kendaraan</legend>
-          <div className="form-stack">
-            <MultiImageUploader
-              id="submission-image-files"
-              selections={imageSelections}
+        <fieldset>
+          <legend>Foto & deskripsi</legend>
+          <div className="form-grid form-grid-single">
+            <ImageUploader
+              id="submission-image-file"
+              selection={imageSelection}
+              imageUrl={form.imageUrl}
+              alt="Pratinjau foto mobil yang akan diajukan"
               error={imageError}
               disabled={submitting}
-              uploading={submitting && imageSelections.length > 0}
+              uploading={submitting && Boolean(imageSelection)}
               inputRef={imageInputRef}
-              onAddFiles={addFiles}
-              onRemoveFile={removeFile}
+              onSelectFile={selectFile}
+              onRemove={clearSelection}
             />
             <Field
               name="imageUrl"
-              label="URL foto HTTPS alternatif (opsional jika sudah unggah foto)"
+              label="URL foto HTTPS (alternatif)"
               type="url"
               placeholder="https://..."
               value={form.imageUrl}
@@ -332,23 +243,22 @@ export default function SellPage() {
               setContactConsent(event.target.checked)
               if (event.target.checked) {
                 setErrors((current) => {
-                  const next = { ...current }
-                  delete next.contactConsent
-                  return next
+                  const remaining = { ...current }
+                  delete remaining.contactConsent
+                  return remaining
                 })
               }
             }}
           />
-          <span>Saya setuju data kontak dan spesifikasi mobil ini diverifikasi oleh tim kurator CarHub.</span>
+          <span>
+            Saya memahami nomor WhatsApp akan ditampilkan kepada calon pembeli jika listing disetujui.
+            {errors.contactConsent && <small className="field-error" id="contact-consent-error">{errors.contactConsent}</small>}
+          </span>
         </label>
-        {errors.contactConsent && (
-          <small className="field-error consent-error" id="contact-consent-error" role="alert">
-            {errors.contactConsent}
-          </small>
-        )}
         <button className="button button-primary submit-button" type="submit" disabled={submitting}>
-          {submitting ? 'Mengirim pengajuan…' : <>Kirim pengajuan <ArrowRight size={17} aria-hidden="true" /></>}
+          {submitting ? 'Mengirim pengajuan…' : <>Kirim untuk ditinjau <ArrowRight size={17} aria-hidden="true" /></>}
         </button>
+        <p className="form-footnote">Kontak digunakan untuk menindaklanjuti pengajuan dan menghubungkan Anda dengan calon pembeli jika listing disetujui.</p>
       </form>
     </main>
   )

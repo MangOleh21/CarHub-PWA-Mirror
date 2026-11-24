@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { CircleAlert } from 'lucide-react'
 import AppLink from '../components/AppLink.jsx'
 import BrandMark from '../components/BrandMark.jsx'
-import { ErrorState, LoadingState } from '../components/Feedback.jsx'
+import { ErrorState } from '../components/Feedback.jsx'
 import ThemeToggle from '../components/ThemeToggle.jsx'
 import { getAdminLoginErrorMessage } from '../lib/admin-login.js'
 import AdminDashboard from './admin/AdminDashboard.jsx'
 import AdminCarEditor from './admin/AdminCarEditor.jsx'
-import { getAdminSession, loginAdmin } from '../services/api.js'
+import { loginAdmin } from '../services/api.js'
 
 export default function AdminPage({ pathname, navigate }) {
   if (pathname === '/admin/login') return <AdminLogin navigate={navigate} />
@@ -33,27 +33,6 @@ function AdminLogin({ navigate }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
-  const [checkingSession, setCheckingSession] = useState(true)
-
-  useEffect(() => {
-    let active = true
-    getAdminSession()
-      .then(({ admin }) => {
-        if (active && admin) navigate('/admin')
-      })
-      .catch(() => {
-        if (active) setCheckingSession(false)
-      })
-    return () => { active = false }
-  }, [navigate])
-
-  if (checkingSession) {
-    return (
-      <main className="admin-login-page">
-        <LoadingState label="Memeriksa sesi administrator…" />
-      </main>
-    )
-  }
 
   async function submit(event) {
     event.preventDefault()
