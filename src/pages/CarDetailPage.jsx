@@ -2,13 +2,12 @@ import { ArrowLeft, Fuel, Gauge, Heart, MapPin, MessageCircle, Settings2 } from 
 import { useEffect, useState } from 'react'
 import AppLink from '../components/AppLink.jsx'
 import { ErrorState, LoadingState } from '../components/Feedback.jsx'
+import ImageGallery from '../components/ImageGallery.jsx'
 import { formatMileage, formatPrice, whatsappUrl } from '../lib/format.js'
 import { getCar } from '../services/api.js'
 
 export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlist }) {
   const [response, setResponse] = useState({ id: null, car: null, error: null })
-  const [failedImageId, setFailedImageId] = useState(null)
-
   useEffect(() => {
     let active = true
     getCar(id)
@@ -38,14 +37,12 @@ export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlis
     <main className="page-content detail-page">
       <AppLink className="back-link" to="/" navigate={navigate}><ArrowLeft size={17} /> Kembali ke katalog</AppLink>
       <div className="detail-image-wrap">
-        {failedImageId !== car.id && (
-          <img
-            src={car.imageUrl}
-            alt={`${car.brand} ${car.model}`}
-            onError={() => setFailedImageId(car.id)}
-          />
-        )}
-        {failedImageId === car.id && <div className="car-image-fallback" aria-hidden="true">CarHub</div>}
+        <ImageGallery
+          images={car.images}
+          alt={`Foto ${car.brand} ${car.model}`}
+          label={`Foto ${car.brand} ${car.model}`}
+          className="detail-image-gallery"
+        />
         <span className="detail-image-label">{car.year} · {car.transmission}</span>
       </div>
 

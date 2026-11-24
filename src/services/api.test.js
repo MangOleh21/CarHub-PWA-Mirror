@@ -4,9 +4,11 @@ import {
   ApiError,
   createSubmission,
   getAdminDashboardSummary,
+  getAdminUsers,
   getCars,
   reviewSubmission,
   uploadImageFile,
+  uploadImageFiles,
 } from './api.js'
 
 const originalFetch = globalThis.fetch
@@ -15,7 +17,7 @@ afterEach(() => {
   globalThis.fetch = originalFetch
 })
 
-test('getCars sends filters and includes cookies in the API request', async () => {
+test('getCars sends search, range, sorting filters and includes cookies in the API request', async () => {
   let requestUrl
   let requestOptions
 
@@ -34,6 +36,10 @@ test('getCars sends filters and includes cookies in the API request', async () =
         mileage: 25000,
         price: '180000000',
         imageUrl: 'https://images.example.test/car.jpg',
+        images: [
+          'https://images.example.test/car.jpg',
+          'https://images.example.test/car-side.jpg',
+        ],
         sellerName: 'Ayu',
         sellerPhone: '+6281234567890',
         location: 'Bandung',
@@ -44,12 +50,56 @@ test('getCars sends filters and includes cookies in the API request', async () =
     }), { status: 200 })
   }
 
-  const result = await getCars({ search: 'Avanza & X', brand: 'Toyota', page: 2, pageSize: 10 })
+  const result = await getCars({
+    search: 'Avanza & X',
+    brand: 'Toyota',
+    transmission: 'Automatic',
+    minPrice: 100000000,
+    maxPrice: 200000000,
+    minYear: 2018,
+    maxYear: 2022,
+    sortBy: 'price',
+    sortOrder: 'asc',
+    page: 2,
+    pageSize: 10,
+  })
 
-  assert.equal(requestUrl, 'http://localhost:5000/api/cars?search=Avanza+%26+X&brand=Toyota&page=2&pageSize=10')
+  assert.equal(
+    requestUrl,
+    'http://localhost:5000/api/cars?search=Avanza+%26+X&brand=Toyota&transmission=Automatic&minPrice=100000000&maxPrice=200000000&minYear=2018&maxYear=2022&sortBy=price&sortOrder=asc&page=2&pageSize=10',
+  )
   assert.equal(requestOptions.credentials, 'include')
   assert.equal(result.data[0].id, '42')
+  assert.deepEqual(result.data[0].images, [
+    'https://images.example.test/car.jpg',
+    'https://images.example.test/car-side.jpg',
+  ])
   assert.equal(result.pagination.page, 2)
+})
+
+test('getCars normalizes legacy single-image responses into a one-photo gallery', async () => {
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    success: true,
+    data: [{
+      id: '42',
+      brand: 'Toyota',
+      model: 'Avanza',
+      year: 2020,
+      transmission: 'Automatic',
+      mileage: 25000,
+      price: '180000000',
+      imageUrl: 'https://images.example.test/car.jpg',
+      sellerName: 'Ayu',
+      sellerPhone: '+6281234567890',
+      location: null,
+      description: null,
+    }],
+    pagination: { page: 1, pageSize: 20, totalItems: 1, totalPages: 1 },
+  }), { status: 200 })
+
+  const result = await getCars()
+
+  assert.deepEqual(result.data[0].images, ['https://images.example.test/car.jpg'])
 })
 
 test('getCars preserves structured API errors for the UI', async () => {
@@ -88,6 +138,7 @@ test('reviewSubmission accepts the compact review result documented by the backe
           status: 'approved',
           reviewedByEmail: 'admin@example.test',
           reviewNote: null,
+          reviewedAt: '2026-11-24T00:00:00.000Z',
         },
         car: { id: '42' },
       },
@@ -98,6 +149,7 @@ test('reviewSubmission accepts the compact review result documented by the backe
 
   assert.equal(requestUrl, 'http://localhost:5000/api/admin/submissions/105/approved')
   assert.equal(result.submission.status, 'approved')
+  assert.equal(result.submission.reviewedAt, '2026-11-24T00:00:00.000Z')
   assert.equal(result.car.id, '42')
 })
 
@@ -148,6 +200,85 @@ test('admin dashboard summary propagates API failures for visible error handling
     getAdminDashboardSummary(),
     (error) => error.status === 503 && error.code === 'INTERNAL_ERROR',
   )
+})
+
+test('getAdminUsers returns allowlisted account data from the owner endpoint', async () => {
+  let requestUrl
+  globalThis.fetch = async (url) => {
+    requestUrl = url instanceof Request ? url.url : url
+    return new Response(JSON.stringify({
+      success: true,
+      data: [{
+        id: '2',
+        email: 'admin@example.test',
+        role: 'admin',
+        isActive: true,
+        createdAt: '2026-11-20T00:00:00.000Z',
+        passwordHash: 'must-not-reach-the-ui',
+      }],
+    }), { status: 200 })
+  }
+
+  const admins = await getAdminUsers()
+
+  assert.equal(requestUrl, 'http://localhost:5000/api/admin/users')
+  assert.deepEqual(admins, [{
+    id: '2',
+    email: 'admin@example.test',
+    role: 'admin',
+    isActive: true,
+    createdAt: '2026-11-20T00:00:00.000Z',
+  }])
+})
+
+test('uploadImageFiles uploads multiple files sequentially and preserves gallery order', async () => {
+  const calls = []
+  const uploadUrl = 'https://api.cloudinary.com/v1_1/carhub-demo/image/upload'
+  const files = ['first.png', 'second.png'].map((name) => new File(
+    [new Uint8Array([0x89, 0x50, 0x4e, 0x47])],
+    name,
+    { type: 'image/png' },
+  ))
+  let uploadIndex = 0
+
+  globalThis.fetch = async (input, options) => {
+    const request = input instanceof Request ? input : new Request(input, options)
+    if (request.url === uploadUrl) {
+      const currentIndex = uploadIndex++
+      calls.push(`cloudinary:${currentIndex}`)
+      return new Response(JSON.stringify({
+        secure_url: `https://res.cloudinary.com/carhub-demo/image/upload/v123/carhub/cars/${currentIndex}.png`,
+        public_id: `upload-${currentIndex}`,
+        format: 'png',
+      }), { status: 200 })
+    }
+
+    calls.push(`signature:${uploadIndex}`)
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        uploadUrl,
+        uploadFields: {
+          api_key: 'public-key',
+          asset_folder: 'carhub/cars',
+          allowed_formats: 'jpg,png,webp',
+          overwrite: false,
+          public_id: `upload-${uploadIndex}`,
+          signature: `signed-${uploadIndex}`,
+          timestamp: 123,
+          upload_preset: 'carhub-signed',
+        },
+      },
+    }), { status: 200 })
+  }
+
+  const images = await uploadImageFiles(files, 'cars')
+
+  assert.deepEqual(calls, ['signature:0', 'cloudinary:0', 'signature:1', 'cloudinary:1'])
+  assert.deepEqual(images, [
+    'https://res.cloudinary.com/carhub-demo/image/upload/v123/carhub/cars/0.png',
+    'https://res.cloudinary.com/carhub-demo/image/upload/v123/carhub/cars/1.png',
+  ])
 })
 
 test('image upload sends the file directly to Cloudinary with server-signed fields', async () => {

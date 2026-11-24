@@ -7,8 +7,18 @@ import { EmptyState, ErrorState, LoadingState } from '../components/Feedback.jsx
 const PAGE_SIZE = 12
 
 export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
-  const [draft, setDraft] = useState({ search: '', brand: '' })
-  const [filters, setFilters] = useState({ search: '', brand: '' })
+  const [draft, setDraft] = useState({
+    search: '',
+    brand: '',
+    transmission: '',
+    minPrice: '',
+    maxPrice: '',
+    minYear: '',
+    maxYear: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+  })
+  const [filters, setFilters] = useState({ ...draft })
   const [page, setPage] = useState(1)
   const [requestKey, setRequestKey] = useState(0)
   const [response, setResponse] = useState({ key: -1, result: null, error: null })
@@ -28,16 +38,36 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
   function applyFilters(event) {
     event.preventDefault()
     setPage(1)
-    setFilters({ search: draft.search.trim(), brand: draft.brand.trim() })
+    setFilters({
+      ...draft,
+      search: draft.search.trim(),
+      brand: draft.brand.trim(),
+    })
     setRequestKey((key) => key + 1)
   }
 
   function clearFilters() {
-    setDraft({ search: '', brand: '' })
-    setFilters({ search: '', brand: '' })
+    const emptyFilters = {
+      search: '',
+      brand: '',
+      transmission: '',
+      minPrice: '',
+      maxPrice: '',
+      minYear: '',
+      maxYear: '',
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    }
+    setDraft(emptyFilters)
+    setFilters(emptyFilters)
     setPage(1)
     setRequestKey((key) => key + 1)
   }
+
+  const hasFilters = Boolean(
+    filters.search || filters.brand || filters.transmission || filters.minPrice || filters.maxPrice
+    || filters.minYear || filters.maxYear || filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc',
+  )
 
   return (
     <main className="page-content catalog-page">
@@ -70,6 +100,81 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
           />
         </label>
         <button className="button button-primary search-submit" type="submit">Cari</button>
+        <div className="catalog-filters">
+          <label className="catalog-filter-field">
+            <span>Transmisi</span>
+            <select
+              value={draft.transmission}
+              onChange={(event) => setDraft((current) => ({ ...current, transmission: event.target.value }))}
+            >
+              <option value="">Semua</option>
+              <option value="Manual">Manual</option>
+              <option value="Automatic">Automatic</option>
+            </select>
+          </label>
+          <label className="catalog-filter-field">
+            <span>Harga minimum</span>
+            <input
+              type="number"
+              min="1"
+              inputMode="numeric"
+              placeholder="Rp"
+              value={draft.minPrice}
+              onChange={(event) => setDraft((current) => ({ ...current, minPrice: event.target.value }))}
+            />
+          </label>
+          <label className="catalog-filter-field">
+            <span>Harga maksimum</span>
+            <input
+              type="number"
+              min="1"
+              inputMode="numeric"
+              placeholder="Rp"
+              value={draft.maxPrice}
+              onChange={(event) => setDraft((current) => ({ ...current, maxPrice: event.target.value }))}
+            />
+          </label>
+          <label className="catalog-filter-field">
+            <span>Tahun minimum</span>
+            <input
+              type="number"
+              min="1886"
+              max="2100"
+              inputMode="numeric"
+              placeholder="Tahun"
+              value={draft.minYear}
+              onChange={(event) => setDraft((current) => ({ ...current, minYear: event.target.value }))}
+            />
+          </label>
+          <label className="catalog-filter-field">
+            <span>Tahun maksimum</span>
+            <input
+              type="number"
+              min="1886"
+              max="2100"
+              inputMode="numeric"
+              placeholder="Tahun"
+              value={draft.maxYear}
+              onChange={(event) => setDraft((current) => ({ ...current, maxYear: event.target.value }))}
+            />
+          </label>
+          <label className="catalog-filter-field">
+            <span>Urutkan</span>
+            <select
+              value={`${draft.sortBy}:${draft.sortOrder}`}
+              onChange={(event) => {
+                const [sortBy, sortOrder] = event.target.value.split(':')
+                setDraft((current) => ({ ...current, sortBy, sortOrder }))
+              }}
+            >
+              <option value="createdAt:desc">Terbaru</option>
+              <option value="price:asc">Harga terendah</option>
+              <option value="price:desc">Harga tertinggi</option>
+              <option value="year:desc">Tahun terbaru</option>
+              <option value="year:asc">Tahun terlama</option>
+            </select>
+          </label>
+        </div>
       </form>
 
       <section className="catalog-results" aria-labelledby="catalog-heading">
@@ -86,8 +191,8 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
         {!loading && !error && result?.data.length === 0 && (
           <EmptyState
             title="Belum ada mobil yang cocok"
-            message="Ubah kata pencarian atau filter merk untuk melihat pilihan lain."
-            action={(filters.search || filters.brand) && (
+            message="Ubah kata pencarian atau filter untuk melihat pilihan lain."
+            action={hasFilters && (
               <button className="button button-outline" type="button" onClick={clearFilters}>Hapus filter</button>
             )}
           />

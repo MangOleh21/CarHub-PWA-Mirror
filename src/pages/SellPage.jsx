@@ -2,7 +2,8 @@ import { ArrowRight, Check, CircleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import ImageUploader from '../components/ImageUploader.jsx'
 import { useImageFileSelection } from '../hooks/useImageFileSelection.js'
-import { createSubmission, uploadImageFile } from '../services/api.js'
+import { maxImageCount } from '../lib/image-upload.js'
+import { createSubmission, uploadImageFiles } from '../services/api.js'
 
 const EMPTY_FORM = {
   sellerName: '',
@@ -15,18 +16,21 @@ const EMPTY_FORM = {
   expectedPrice: '',
   location: '',
   imageUrl: '',
+  images: [],
   description: '',
 }
 
-function validate(form, hasSelectedImage, hasImageError) {
+function validate(form, selectedImageCount, hasImageError) {
   const errors = {}
   const required = ['sellerName', 'sellerPhone', 'brand', 'model', 'year', 'mileage', 'expectedPrice', 'location']
   required.forEach((field) => {
     if (!String(form[field]).trim()) errors[field] = 'Bagian ini wajib diisi.'
   })
-  if (!form.imageUrl.trim() && !hasSelectedImage && !hasImageError) {
+  const imageCount = form.images.length + selectedImageCount + (form.imageUrl.trim() ? 1 : 0)
+  if (imageCount === 0 && !hasImageError) {
     errors.imageUrl = 'Pilih foto atau masukkan URL HTTPS.'
   }
+  if (imageCount > maxImageCount) errors.imageUrl = `Jumlah foto maksimal ${maxImageCount} foto.`
 
   if (form.sellerPhone && !/^\+?\d[\d\s()-]{7,19}$/.test(form.sellerPhone.trim())) {
     errors.sellerPhone = 'Gunakan nomor telepon yang valid.'
@@ -43,7 +47,7 @@ function validate(form, hasSelectedImage, hasImageError) {
     || Number(form.expectedPrice) <= 0)) {
     errors.expectedPrice = 'Harga harus berupa angka positif.'
   }
-  if (form.imageUrl && !hasSelectedImage) {
+  if (form.imageUrl) {
     try {
       if (new URL(form.imageUrl).protocol !== 'https:') errors.imageUrl = 'Tautan foto harus menggunakan HTTPS.'
     } catch {
@@ -80,11 +84,13 @@ export default function SellPage() {
   const [submitting, setSubmitting] = useState(false)
   const [contactConsent, setContactConsent] = useState(false)
   const {
-    selection: imageSelection,
+    selections: imageSelections,
     error: imageError,
     inputRef: imageInputRef,
-    selectFile,
-    clearSelection,
+    selectFiles,
+    removeSelection,
+    clearSelections,
+    clearError: clearImageError,
   } = useImageFileSelection()
   const errorSummary = useRef(null)
   const errorCount = Object.keys(errors).length + (imageError ? 1 : 0)
@@ -101,19 +107,24 @@ export default function SellPage() {
   async function submit(event) {
     event.preventDefault()
     setMessage(null)
-    const validationErrors = validate(form, Boolean(imageSelection), Boolean(imageError))
+    const validationErrors = validate(form, imageSelections.length, Boolean(imageError))
     if (!contactConsent) validationErrors.contactConsent = 'Persetujuan ini diperlukan untuk mengirim pengajuan.'
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length || imageError) return
 
     setSubmitting(true)
     try {
-      let imageUrl = form.imageUrl.trim()
-      if (imageSelection) {
-        imageUrl = await uploadImageFile(imageSelection.file, 'submissions')
-        setForm((current) => ({ ...current, imageUrl }))
-        clearSelection()
-      }
+      const uploadedImages = await uploadImageFiles(
+        imageSelections.map(({ file }) => file),
+        'submissions',
+      )
+      const images = [
+        ...form.images,
+        ...uploadedImages,
+        ...(form.imageUrl.trim() ? [form.imageUrl.trim()] : []),
+      ]
+      setForm((current) => ({ ...current, images, imageUrl: '' }))
+      clearSelections()
       const result = await createSubmission({
         ...form,
         sellerName: form.sellerName.trim(),
@@ -124,12 +135,13 @@ export default function SellPage() {
         mileage: Number(form.mileage),
         expectedPrice: Number(form.expectedPrice),
         location: form.location.trim(),
-        imageUrl,
+        imageUrl: images[0],
+        images,
         description: form.description.trim() || undefined,
       })
       setMessage({ type: 'success', id: result.id })
       setForm(EMPTY_FORM)
-      clearSelection()
+      clearSelections()
       setErrors({})
       setContactConsent(false)
     } catch (error) {
@@ -198,15 +210,27 @@ export default function SellPage() {
           <div className="form-grid form-grid-single">
             <ImageUploader
               id="submission-image-file"
-              selection={imageSelection}
+              images={form.images}
+              selections={imageSelections}
               imageUrl={form.imageUrl}
               alt="Pratinjau foto mobil yang akan diajukan"
               error={imageError}
               disabled={submitting}
-              uploading={submitting && Boolean(imageSelection)}
+              uploading={submitting && imageSelections.length > 0}
               inputRef={imageInputRef}
-              onSelectFile={selectFile}
-              onRemove={clearSelection}
+              onSelectFiles={selectFiles}
+              onRemoveImage={(index) => {
+                setForm((current) => ({
+                  ...current,
+                  images: current.images.filter((_, position) => position !== index),
+                }))
+                clearImageError()
+              }}
+              onRemoveSelection={removeSelection}
+              onClearImageUrl={() => {
+                setForm((current) => ({ ...current, imageUrl: '' }))
+                clearImageError()
+              }}
             />
             <Field
               name="imageUrl"

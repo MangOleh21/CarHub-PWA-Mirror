@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getImageFileError } from '../lib/image-upload.js'
+import { getImageFileError, getImageFilesError } from '../lib/image-upload.js'
 
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:5000/api')
   .replace(/\/+$/, '')
@@ -53,14 +53,12 @@ function readData(payload) {
 }
 
 function parseCar(value) {
-  let validImageUrl = false
-  if (typeof value?.imageUrl === 'string') {
-    try {
-      validImageUrl = new URL(value.imageUrl).protocol === 'https:'
-    } catch {
-      validImageUrl = false
-    }
-  }
+  const images = Array.isArray(value?.images)
+    && value.images.length > 0
+    ? value.images
+    : typeof value?.imageUrl === 'string' ? [value.imageUrl] : []
+  const imageUrl = typeof value?.imageUrl === 'string' ? value.imageUrl : images[0]
+  const validImages = images.length > 0 && images.every(isHttpsUrl)
   const isValid = value
     && typeof value.id === 'string'
     && typeof value.brand === 'string'
@@ -70,7 +68,9 @@ function parseCar(value) {
     && Number.isInteger(value.mileage)
     && typeof value.price === 'string'
     && /^\d+$/.test(value.price)
-    && validImageUrl
+    && (!Object.hasOwn(value, 'images') || Array.isArray(value.images))
+    && validImages
+    && isHttpsUrl(imageUrl)
     && typeof value.sellerName === 'string'
     && typeof value.sellerPhone === 'string'
     && (typeof value.location === 'string' || value.location === null)
@@ -79,10 +79,17 @@ function parseCar(value) {
   if (!isValid) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data mobil dari server tidak sesuai kontrak API.')
   }
-  return value
+  return { ...value, imageUrl, images }
 }
 
 function parseSubmission(value) {
+  const images = Array.isArray(value?.images)
+    && value.images.length > 0
+    ? value.images
+    : typeof value?.imageUrl === 'string' ? [value.imageUrl] : []
+  const validImageUrl = value?.imageUrl === undefined
+    || value.imageUrl === null
+    || isHttpsUrl(value.imageUrl)
   const isValid = value
     && typeof value.id === 'string'
     && typeof value.brand === 'string'
@@ -95,12 +102,28 @@ function parseSubmission(value) {
     && /^\d+$/.test(value.expectedPrice)
     && ['pending', 'approved', 'rejected'].includes(value.status)
     && (typeof value.location === 'string' || value.location === null)
-    && (typeof value.imageUrl === 'string' || value.imageUrl === null)
+    && validImageUrl
+    && (!Object.hasOwn(value, 'images') || Array.isArray(value.images))
+    && images.every(isHttpsUrl)
+    && (value.reviewedAt === undefined || value.reviewedAt === null || isValidDate(value.reviewedAt))
 
   if (!isValid) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data pengajuan dari server tidak sesuai kontrak API.')
   }
-  return value
+  return { ...value, imageUrl: value.imageUrl ?? images[0] ?? null, images }
+}
+
+function isHttpsUrl(value) {
+  if (typeof value !== 'string') return false
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function isValidDate(value) {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value))
 }
 
 function parseAdmin(value) {
@@ -108,15 +131,23 @@ function parseAdmin(value) {
     || !['owner', 'admin'].includes(value.role)) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data sesi admin dari server tidak sesuai kontrak API.')
   }
-  return value
+  return { id: value.id, email: value.email, role: value.role }
 }
 
 function parseManagedAdmin(value) {
   const admin = parseAdmin(value)
-  if (typeof admin.isActive !== 'boolean') {
+  if (typeof value.isActive !== 'boolean') {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data akun admin dari server tidak sesuai kontrak API.')
   }
-  return admin
+  return { ...admin, isActive: value.isActive }
+}
+
+function parseAdminAccount(value) {
+  const admin = parseManagedAdmin(value)
+  if (!isValidDate(value.createdAt)) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Data akun admin dari server tidak sesuai kontrak API.')
+  }
+  return { ...admin, createdAt: value.createdAt }
 }
 
 function parseReviewedSubmission(value) {
@@ -124,10 +155,17 @@ function parseReviewedSubmission(value) {
     || typeof value.id !== 'string'
     || !['approved', 'rejected'].includes(value.status)
     || typeof value.reviewedByEmail !== 'string'
-    || (typeof value.reviewNote !== 'string' && value.reviewNote !== null)) {
+    || (typeof value.reviewNote !== 'string' && value.reviewNote !== null)
+    || !isValidDate(value.reviewedAt)) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Hasil review dari server tidak sesuai kontrak API.')
   }
-  return value
+  return {
+    id: value.id,
+    status: value.status,
+    reviewedByEmail: value.reviewedByEmail,
+    reviewNote: value.reviewNote,
+    reviewedAt: value.reviewedAt,
+  }
 }
 
 function parseSubmissionReceipt(value) {
@@ -152,11 +190,37 @@ function parsePagination(payload) {
   return pagination
 }
 
-function listQuery({ search, brand, status, page = 1, pageSize = 20 } = {}) {
+function listQuery({
+  search,
+  brand,
+  status,
+  transmission,
+  minPrice,
+  maxPrice,
+  minYear,
+  maxYear,
+  sortBy,
+  sortOrder,
+  page = 1,
+  pageSize = 20,
+} = {}) {
   const params = new URLSearchParams()
   if (search?.trim()) params.set('search', search.trim())
   if (brand?.trim()) params.set('brand', brand.trim())
   if (status) params.set('status', status)
+  for (const [key, value] of Object.entries({
+    transmission,
+    minPrice,
+    maxPrice,
+    minYear,
+    maxYear,
+    sortBy,
+    sortOrder,
+  })) {
+    if (value !== undefined && value !== null && value !== '') {
+      params.set(key, String(value))
+    }
+  }
   params.set('page', String(page))
   params.set('pageSize', String(pageSize))
   return `?${params.toString()}`
@@ -303,6 +367,17 @@ export async function uploadImageFile(file, kind) {
   return imageUrl.toString()
 }
 
+export async function uploadImageFiles(files, kind) {
+  const selectedFiles = Array.from(files ?? [])
+  const fileError = getImageFilesError(selectedFiles)
+  if (fileError) throw new ApiError(422, 'INVALID_IMAGE', fileError)
+  const imageUrls = []
+  for (const file of selectedFiles) {
+    imageUrls.push(await uploadImageFile(file, kind))
+  }
+  return imageUrls
+}
+
 export async function getAdminDashboardSummary() {
   const [cars, submissions] = await Promise.all([
     getAdminCars({ page: 1, pageSize: 1 }),
@@ -356,6 +431,14 @@ export async function reviewSubmission(id, decision, input = {}) {
 export async function createAdminUser(input) {
   const data = readData(await request('/admin/users', { method: 'POST', body: input }))
   return parseManagedAdmin(data?.admin)
+}
+
+export async function getAdminUsers() {
+  const data = readData(await request('/admin/users'))
+  if (!Array.isArray(data)) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Daftar akun admin dari server tidak valid.')
+  }
+  return data.map(parseAdminAccount)
 }
 
 export async function deactivateAdminUser(id) {

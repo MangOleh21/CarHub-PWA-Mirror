@@ -1,13 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { UserPlus, UserX } from 'lucide-react'
-import { createAdminUser, deactivateAdminUser } from '../../services/api.js'
+import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
+import { createAdminUser, deactivateAdminUser, getAdminUsers } from '../../services/api.js'
 
-export default function AdminAccountsPanel({ admins, onCreated, onDeactivated }) {
+export default function AdminAccountsPanel() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
+  const [requestKey, setRequestKey] = useState(0)
+  const [response, setResponse] = useState({ key: -1, admins: null, error: null })
+
+  useEffect(() => {
+    let active = true
+    getAdminUsers()
+      .then((admins) => {
+        if (active) setResponse({ key: requestKey, admins, error: null })
+      })
+      .catch((cause) => {
+        if (active) setResponse({ key: requestKey, admins: null, error: cause.message })
+      })
+    return () => { active = false }
+  }, [requestKey])
+
+  const loading = response.key !== requestKey
+  const admins = response.key === requestKey ? response.admins : null
+  const listError = response.key === requestKey ? response.error : null
 
   async function createAccount(event) {
     event.preventDefault()
@@ -16,10 +35,10 @@ export default function AdminAccountsPanel({ admins, onCreated, onDeactivated })
     setBusy(true)
     try {
       const admin = await createAdminUser({ email: email.trim(), password })
-      onCreated(admin)
       setEmail('')
       setPassword('')
       setMessage(`Akun admin dibuat dengan ID ${admin.id}.`)
+      setRequestKey((key) => key + 1)
     } catch (cause) {
       setError(cause.message)
     } finally {
@@ -33,8 +52,8 @@ export default function AdminAccountsPanel({ admins, onCreated, onDeactivated })
     setBusy(true)
     try {
       await deactivateAdminUser(admin.id)
-      onDeactivated(admin.id)
       setMessage(`Akun ${admin.email} telah dinonaktifkan.`)
+      setRequestKey((key) => key + 1)
     } catch (cause) {
       setError(cause.message)
     } finally {
@@ -82,22 +101,36 @@ export default function AdminAccountsPanel({ admins, onCreated, onDeactivated })
       {message && <p className="notice notice-success" role="status">{message}</p>}
 
       <div className="admin-created-list">
-        <h3>Akun yang dibuat pada sesi ini</h3>
-        {admins.length === 0 && (
-          <p className="muted-copy">Belum ada akun baru di sesi ini. API backend belum menyediakan endpoint daftar akun admin.</p>
+        <h3>Semua akun admin</h3>
+        {loading && <LoadingState label="Memuat akun administrator" />}
+        {!loading && listError && (
+          <ErrorState message={listError} onRetry={() => setRequestKey((key) => key + 1)} />
         )}
-        {admins.map((admin) => (
+        {!loading && !listError && admins.length === 0 && (
+          <EmptyState title="Belum ada akun" message="Akun administrator akan ditampilkan di sini." />
+        )}
+        {!loading && !listError && admins.map((admin) => (
           <div className="admin-created-row" key={admin.id}>
-            <div><strong>{admin.email}</strong><small>ID {admin.id}</small></div>
-            <button
-              className="button button-danger-quiet"
-              type="button"
-              disabled={busy}
-              onClick={() => deactivate(admin)}
-              aria-label={`Nonaktifkan ${admin.email}`}
-            >
-              <UserX size={16} aria-hidden="true" /> Nonaktifkan
-            </button>
+            <div>
+              <strong>{admin.email}</strong>
+              <small>ID {admin.id} · {admin.role === 'owner' ? 'Owner' : 'Admin'} · Dibuat {new Date(admin.createdAt).toLocaleDateString('id-ID')}</small>
+            </div>
+            <div className="admin-account-actions">
+              <span className={`status-badge ${admin.isActive ? 'status-approved' : 'status-rejected'}`}>
+                {admin.isActive ? 'Aktif' : 'Nonaktif'}
+              </span>
+              {admin.role === 'admin' && admin.isActive && (
+                <button
+                  className="button button-danger-quiet"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => deactivate(admin)}
+                  aria-label={`Nonaktifkan ${admin.email}`}
+                >
+                  <UserX size={16} aria-hidden="true" /> Nonaktifkan
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>

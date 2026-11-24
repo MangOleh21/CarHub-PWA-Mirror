@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Pencil, Plus, Trash2 } from 'lucide-react'
 import AppLink from '../../components/AppLink.jsx'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
+import ImageGallery from '../../components/ImageGallery.jsx'
 import { formatPrice } from '../../lib/format.js'
 import { deleteCar, getAdminCars } from '../../services/api.js'
 
@@ -67,6 +68,12 @@ export default function AdminCarsPanel({ navigate, onDataChange }) {
           <div className="admin-list">
             {result.data.map((car) => (
               <article className="admin-list-row" key={car.id}>
+                <ImageGallery
+                  images={car.images}
+                  alt={`Foto ${car.brand} ${car.model}`}
+                  label={`Foto ${car.brand} ${car.model}`}
+                  className="admin-car-gallery"
+                />
                 <div className="admin-car-info">
                   <span className="admin-record-id">#{car.id} · {car.year}</span>
                   <h3>{car.brand} {car.model}</h3>

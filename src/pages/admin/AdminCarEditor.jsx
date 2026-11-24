@@ -5,7 +5,8 @@ import { ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageUploader from '../../components/ImageUploader.jsx'
 import ThemeToggle from '../../components/ThemeToggle.jsx'
 import { useImageFileSelection } from '../../hooks/useImageFileSelection.js'
-import { createCar, getAdminCar, getAdminSession, updateCar, uploadImageFile } from '../../services/api.js'
+import { maxImageCount } from '../../lib/image-upload.js'
+import { createCar, getAdminCar, getAdminSession, updateCar, uploadImageFiles } from '../../services/api.js'
 
 const EMPTY_CAR = {
   brand: '',
@@ -15,6 +16,7 @@ const EMPTY_CAR = {
   fuelType: 'Bensin',
   mileage: '',
   price: '',
+  images: [],
   imageUrl: '',
   sellerName: '',
   sellerPhone: '',
@@ -25,6 +27,7 @@ const EMPTY_CAR = {
 function carToForm(car) {
   return {
     ...car,
+    imageUrl: '',
     year: String(car.year),
     mileage: String(car.mileage),
     price: car.price,
@@ -32,14 +35,16 @@ function carToForm(car) {
   }
 }
 
-function validateCar(form, hasSelectedImage, hasImageError) {
+function validateCar(form, selectedImageCount, hasImageError) {
   const errors = {}
   for (const field of ['brand', 'model', 'year', 'mileage', 'price', 'sellerName', 'sellerPhone', 'location']) {
     if (!String(form[field]).trim()) errors[field] = 'Bagian ini wajib diisi.'
   }
-  if (!form.imageUrl.trim() && !hasSelectedImage && !hasImageError) {
+  const imageCount = form.images.length + selectedImageCount + (form.imageUrl.trim() ? 1 : 0)
+  if (imageCount === 0 && !hasImageError) {
     errors.imageUrl = 'Pilih foto atau masukkan URL HTTPS.'
   }
+  if (imageCount > maxImageCount) errors.imageUrl = `Jumlah foto maksimal ${maxImageCount} foto.`
   if (form.year && (!Number.isInteger(Number(form.year)) || Number(form.year) < 1886 || Number(form.year) > 2100)) {
     errors.year = 'Tahun harus berada pada rentang 1886–2100.'
   }
@@ -53,7 +58,7 @@ function validateCar(form, hasSelectedImage, hasImageError) {
   if (form.sellerPhone && !/^\+?\d[\d\s()-]{7,19}$/.test(form.sellerPhone.trim())) {
     errors.sellerPhone = 'Gunakan nomor telepon yang valid.'
   }
-  if (form.imageUrl && !hasSelectedImage) {
+  if (form.imageUrl) {
     try {
       if (new URL(form.imageUrl).protocol !== 'https:') errors.imageUrl = 'Tautan foto harus menggunakan HTTPS.'
     } catch {
@@ -90,11 +95,13 @@ export default function AdminCarEditor({ carId, navigate }) {
   const [saveError, setSaveError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const {
-    selection: imageSelection,
+    selections: imageSelections,
     error: imageError,
     inputRef: imageInputRef,
-    selectFile,
-    clearSelection,
+    selectFiles,
+    removeSelection,
+    clearSelections,
+    clearError: clearImageError,
   } = useImageFileSelection()
   const errorSummary = useRef(null)
   const errorCount = Object.keys(errors).length + (imageError ? 1 : 0)
@@ -129,18 +136,23 @@ export default function AdminCarEditor({ carId, navigate }) {
   async function submit(event) {
     event.preventDefault()
     setSaveError(null)
-    const validationErrors = validateCar(form, Boolean(imageSelection), Boolean(imageError))
+    const validationErrors = validateCar(form, imageSelections.length, Boolean(imageError))
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length || imageError) return
 
     setSubmitting(true)
     try {
-      let imageUrl = form.imageUrl.trim()
-      if (imageSelection) {
-        imageUrl = await uploadImageFile(imageSelection.file, 'cars')
-        setDraft((current) => ({ ...(current ?? form), imageUrl }))
-        clearSelection()
-      }
+      const uploadedImages = await uploadImageFiles(
+        imageSelections.map(({ file }) => file),
+        'cars',
+      )
+      const images = [
+        ...form.images,
+        ...uploadedImages,
+        ...(form.imageUrl.trim() ? [form.imageUrl.trim()] : []),
+      ]
+      setDraft((current) => ({ ...(current ?? form), images, imageUrl: '' }))
+      clearSelections()
       const payload = {
         brand: form.brand.trim(),
         model: form.model.trim(),
@@ -149,7 +161,8 @@ export default function AdminCarEditor({ carId, navigate }) {
         fuelType: form.fuelType.trim() || 'Bensin',
         mileage: Number(form.mileage),
         price: Number(form.price),
-        imageUrl,
+        imageUrl: images[0],
+        images,
         sellerName: form.sellerName.trim(),
         sellerPhone: form.sellerPhone.trim(),
         location: form.location.trim(),
@@ -211,15 +224,27 @@ export default function AdminCarEditor({ carId, navigate }) {
             </div>
             <ImageUploader
               id="car-image-file"
-              selection={imageSelection}
+              images={form.images}
+              selections={imageSelections}
               imageUrl={form.imageUrl}
               alt={`Pratinjau foto ${form.brand} ${form.model}`}
               error={imageError}
               disabled={submitting}
-              uploading={submitting && Boolean(imageSelection)}
+              uploading={submitting && imageSelections.length > 0}
               inputRef={imageInputRef}
-              onSelectFile={selectFile}
-              onRemove={clearSelection}
+              onSelectFiles={selectFiles}
+              onRemoveImage={(index) => {
+                setDraft((current) => ({
+                  ...(current ?? form),
+                  images: (current ?? form).images.filter((_, position) => position !== index),
+                }))
+                clearImageError()
+              }}
+              onRemoveSelection={removeSelection}
+              onClearImageUrl={() => {
+                setDraft((current) => ({ ...(current ?? form), imageUrl: '' }))
+                clearImageError()
+              }}
             />
             <EditorField
               name="imageUrl"

@@ -250,6 +250,40 @@ h1 em,
   outline: 0;
 }
 
+.catalog-filters {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.catalog-filter-field {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.catalog-filter-field > span {
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.catalog-filter-field input,
+.catalog-filter-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 9px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: var(--color-surface-soft);
+  color: var(--color-text);
+  font-size: 11px;
+}
+
 .button {
   display: inline-flex;
   min-height: 44px;
@@ -398,11 +432,104 @@ h1 em,
   aspect-ratio: 16 / 10;
 }
 
-.car-image,
-.detail-image-wrap > img {
+.car-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.image-gallery {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  aspect-ratio: 16 / 10;
+  min-height: 180px;
+  place-items: center;
+  overflow: hidden;
+  background: var(--color-surface-soft);
+}
+
+.image-gallery > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-gallery > .car-image-fallback {
+  height: 100%;
+  min-height: 0;
+  font-size: 12px;
+}
+
+.image-gallery-empty {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.image-gallery-control {
+  position: absolute;
+  top: 50%;
+  display: grid;
+  width: 44px;
+  min-height: 44px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 50%;
+  background: rgb(16 25 33 / 72%);
+  color: white;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.image-gallery-control:hover {
+  background: rgb(16 25 33 / 90%);
+}
+
+.image-gallery-control:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+.image-gallery-previous {
+  left: 10px;
+}
+
+.image-gallery-next {
+  right: 10px;
+}
+
+.image-gallery-count {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  background: rgb(16 25 33 / 76%);
+  color: white;
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.detail-image-gallery {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+}
+
+.admin-car-gallery {
+  width: 128px;
+  height: 82px;
+  min-height: 0;
+  border-radius: 5px;
+}
+
+.submission-gallery {
+  width: min(100%, 360px);
+  min-height: 200px;
+  margin-top: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
 }
 
 .car-image-fallback {
@@ -1011,20 +1138,25 @@ h1 em,
 }
 
 .image-select-button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 14px;
   font-size: 12px;
 }
 
 .image-upload-file {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 36px;
+  grid-template-columns: 64px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 12px;
   padding: 10px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface-soft);
+}
+
+.image-upload-files {
+  display: grid;
+  gap: 8px;
 }
 
 .image-preview {
@@ -1080,8 +1212,8 @@ h1 em,
 
 .image-upload-remove {
   display: grid;
-  width: 36px;
-  min-height: 36px;
+  width: 44px;
+  min-height: 44px;
   place-items: center;
   border: 1px solid var(--color-border);
   border-radius: 5px;
@@ -1437,7 +1569,7 @@ h1 em,
 
 .admin-list-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(150px, auto) auto;
+  grid-template-columns: 128px minmax(0, 1fr) minmax(150px, auto) auto;
   gap: 20px;
   align-items: center;
   padding: 17px 18px;
@@ -1567,16 +1699,6 @@ h1 em,
   white-space: pre-line;
 }
 
-.submission-image {
-  width: min(100%, 360px);
-  max-height: 220px;
-  margin-top: 16px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-surface-soft);
-  object-fit: cover;
-}
-
 .submission-review {
   display: grid;
   gap: 13px;
@@ -1645,6 +1767,12 @@ h1 em,
   color: var(--color-muted);
   font-family: var(--font-mono);
   font-size: 10px;
+}
+
+.admin-created-row > .admin-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .admin-login-page {
@@ -1743,12 +1871,16 @@ h1 em,
   }
 
   .admin-list-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: 128px minmax(0, 1fr) auto;
   }
 
   .admin-row-actions {
-    grid-column: 1 / -1;
+    grid-column: 2 / -1;
     justify-content: start;
+  }
+
+  .catalog-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -1815,6 +1947,10 @@ h1 em,
   .search-submit {
     grid-column: 2;
     grid-row: 2;
+  }
+
+  .catalog-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .catalog-results {
@@ -2028,6 +2164,12 @@ h1 em,
     padding: 15px;
   }
 
+  .admin-car-gallery {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
   .admin-row-actions {
     grid-column: auto;
   }
@@ -2060,6 +2202,11 @@ h1 em,
   .admin-created-row {
     align-items: start;
     padding: 12px;
+  }
+
+  .admin-created-row > .admin-account-actions {
+    align-items: end;
+    flex-direction: column;
   }
 
   .admin-created-row .button {

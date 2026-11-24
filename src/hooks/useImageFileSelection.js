@@ -1,41 +1,73 @@
 import { useEffect, useRef, useState } from 'react'
-import { getImageFileError } from '../lib/image-upload.js'
+import { getImageFilesError } from '../lib/image-upload.js'
 
 export function useImageFileSelection() {
-  const [selection, setSelection] = useState(null)
+  const [selections, setSelections] = useState([])
   const [error, setError] = useState(null)
   const inputRef = useRef(null)
+  const selectionsRef = useRef([])
 
   useEffect(() => {
-    const previewUrl = selection?.previewUrl
     return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      selectionsRef.current.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl))
     }
-  }, [selection?.previewUrl])
+  }, [])
 
-  function selectFile(file) {
-    const validationError = file ? getImageFileError(file) : null
+  function selectFiles(files, existingCount = 0) {
+    const incomingFiles = Array.from(files ?? [])
+    if (incomingFiles.length === 0) return
+
+    const currentSelections = selectionsRef.current
+    const validationError = getImageFilesError(
+      [...currentSelections.map(({ file }) => file), ...incomingFiles],
+      existingCount,
+    )
     if (validationError) {
-      setSelection(null)
       setError(validationError)
       if (inputRef.current) inputRef.current.value = ''
       return
     }
-    if (!file) {
-      setSelection(null)
-      setError(null)
-      return
-    }
 
-    setSelection({ file, previewUrl: URL.createObjectURL(file) })
-    setError(null)
-  }
-
-  function clearSelection() {
-    setSelection(null)
+    const nextSelections = [
+      ...currentSelections,
+      ...incomingFiles.map((file) => ({ file, previewUrl: URL.createObjectURL(file) })),
+    ]
+    selectionsRef.current = nextSelections
+    setSelections(nextSelections)
     setError(null)
     if (inputRef.current) inputRef.current.value = ''
   }
 
-  return { selection, error, inputRef, selectFile, clearSelection }
+  function removeSelection(index) {
+    const currentSelections = selectionsRef.current
+    const removed = currentSelections[index]
+    if (removed) URL.revokeObjectURL(removed.previewUrl)
+    const nextSelections = currentSelections.filter((_, position) => position !== index)
+    selectionsRef.current = nextSelections
+    setSelections(nextSelections)
+    setError(null)
+    if (inputRef.current) inputRef.current.value = ''
+  }
+
+  function clearSelections() {
+    selectionsRef.current.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl))
+    selectionsRef.current = []
+    setSelections([])
+    setError(null)
+    if (inputRef.current) inputRef.current.value = ''
+  }
+
+  function clearError() {
+    setError(null)
+  }
+
+  return {
+    selections,
+    error,
+    inputRef,
+    selectFiles,
+    removeSelection,
+    clearSelections,
+    clearError,
+  }
 }

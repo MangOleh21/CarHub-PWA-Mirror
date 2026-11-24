@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
+import ImageGallery from '../../components/ImageGallery.jsx'
 import { formatPrice } from '../../lib/format.js'
 import { getAdminSubmissions, reviewSubmission } from '../../services/api.js'
 
@@ -18,11 +19,11 @@ function SubmissionCard({ submission, onReview, busy }) {
       setError('Lokasi wajib diisi sebelum pengajuan ini dapat disetujui.')
       return
     }
-    if (decision === 'approved' && !submission.imageUrl && !imageUrl.trim()) {
+    if (decision === 'approved' && !submission.images.length && !imageUrl.trim()) {
       setError('URL foto HTTPS wajib diisi sebelum pengajuan ini dapat disetujui.')
       return
     }
-    if (imageUrl.trim()) {
+    if (decision === 'approved' && imageUrl.trim()) {
       try {
         if (new URL(imageUrl).protocol !== 'https:') throw new TypeError()
       } catch {
@@ -34,7 +35,9 @@ function SubmissionCard({ submission, onReview, busy }) {
     const input = {}
     if (reviewNote.trim()) input.reviewNote = reviewNote.trim()
     if (decision === 'approved' && !submission.location && location.trim()) input.location = location.trim()
-    if (decision === 'approved' && !submission.imageUrl && imageUrl.trim()) input.imageUrl = imageUrl.trim()
+    if (decision === 'approved' && !submission.images.length && imageUrl.trim()) {
+      input.images = [imageUrl.trim()]
+    }
     try {
       await onReview(submission.id, decision, input)
     } catch (cause) {
@@ -57,19 +60,17 @@ function SubmissionCard({ submission, onReview, busy }) {
         <div><dt>Detail</dt><dd>{submission.mileage.toLocaleString('id-ID')} km · {submission.transmission}</dd></div>
         <div><dt>Lokasi</dt><dd>{submission.location || 'Belum diisi'}</dd></div>
       </dl>
-      {submission.imageUrl && (
-        <img
-          className="submission-image"
-          src={submission.imageUrl}
-          alt={`Foto ${submission.brand} ${submission.model}`}
-          loading="lazy"
-        />
-      )}
+      <ImageGallery
+        images={submission.images}
+        alt={`Foto ${submission.brand} ${submission.model}`}
+        label={`Foto pengajuan ${submission.brand} ${submission.model}`}
+        className="submission-gallery"
+      />
       {submission.description && <p className="submission-description">{submission.description}</p>}
 
       {submission.status === 'pending' && (
         <div className="submission-review">
-          {(!submission.location || !submission.imageUrl) && (
+          {(!submission.location || !submission.images.length) && (
             <div className="form-grid">
               {!submission.location && (
                 <label className="form-field">
@@ -77,7 +78,7 @@ function SubmissionCard({ submission, onReview, busy }) {
                   <input value={location} onChange={(event) => setLocation(event.target.value)} maxLength={150} />
                 </label>
               )}
-              {!submission.imageUrl && (
+              {!submission.images.length && (
                 <label className="form-field">
                   <span>Lengkapi URL foto HTTPS</span>
                   <input type="url" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} />
@@ -102,6 +103,12 @@ function SubmissionCard({ submission, onReview, busy }) {
       )}
       {submission.reviewedByEmail && (
         <p className="review-note"><strong>Ditinjau oleh:</strong> {submission.reviewedByEmail}</p>
+      )}
+      {submission.reviewedAt && (
+        <p className="review-note">
+          <strong>Waktu review:</strong>{' '}
+          <time dateTime={submission.reviewedAt}>{new Date(submission.reviewedAt).toLocaleString('id-ID')}</time>
+        </p>
       )}
       {submission.reviewNote && <p className="review-note"><strong>Catatan:</strong> {submission.reviewNote}</p>}
     </article>

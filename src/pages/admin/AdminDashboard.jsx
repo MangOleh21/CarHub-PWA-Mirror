@@ -67,7 +67,6 @@ export default function AdminDashboard({ navigate }) {
   const [session, setSession] = useState(null)
   const [sessionError, setSessionError] = useState(null)
   const [tab, setTab] = useState('cars')
-  const [createdAdmins, setCreatedAdmins] = useState([])
   const [summaryRevision, setSummaryRevision] = useState(0)
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState(null)
@@ -156,11 +155,7 @@ export default function AdminDashboard({ navigate }) {
           <AdminSubmissionsPanel onDataChange={() => setSummaryRevision((value) => value + 1)} />
         )}
         {activeTab === 'admins' && session.role === 'owner' && (
-          <AdminAccountsPanel
-            admins={createdAdmins}
-            onCreated={(admin) => setCreatedAdmins((current) => [admin, ...current])}
-            onDeactivated={(id) => setCreatedAdmins((current) => current.filter((admin) => admin.id !== id))}
-          />
+          <AdminAccountsPanel />
         )}
       </main>
     </div>

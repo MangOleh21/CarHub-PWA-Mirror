@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CircleAlert } from 'lucide-react'
 import AppLink from '../components/AppLink.jsx'
 import BrandMark from '../components/BrandMark.jsx'
-import { ErrorState } from '../components/Feedback.jsx'
+import { ErrorState, LoadingState } from '../components/Feedback.jsx'
 import ThemeToggle from '../components/ThemeToggle.jsx'
 import { getAdminLoginErrorMessage } from '../lib/admin-login.js'
 import AdminDashboard from './admin/AdminDashboard.jsx'
 import AdminCarEditor from './admin/AdminCarEditor.jsx'
-import { loginAdmin } from '../services/api.js'
+import { getAdminSession, loginAdmin } from '../services/api.js'
 
 export default function AdminPage({ pathname, navigate }) {
   if (pathname === '/admin/login') return <AdminLogin navigate={navigate} />
@@ -33,6 +33,20 @@ function AdminLogin({ navigate }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
+  const [sessionError, setSessionError] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    getAdminSession()
+      .then(() => { if (active) navigate('/admin') })
+      .catch((cause) => {
+        if (!active || cause.status === 401) return
+        setSessionError(cause.message)
+      })
+      .finally(() => { if (active) setCheckingSession(false) })
+    return () => { active = false }
+  }, [navigate])
 
   async function submit(event) {
     event.preventDefault()
@@ -62,13 +76,20 @@ function AdminLogin({ navigate }) {
         <p className="eyebrow">RUANG OPERASIONAL</p>
         <h1>Masuk ke portal.</h1>
         <p className="admin-login-copy">Gunakan akun admin CarHub yang telah dibuat oleh owner.</p>
+        {checkingSession && <LoadingState label="Memeriksa sesi admin" />}
+        {sessionError && (
+          <div className="notice notice-error login-error" role="alert">
+            <CircleAlert size={18} aria-hidden="true" />
+            <span>Sesi admin tidak dapat diperiksa: {sessionError}</span>
+          </div>
+        )}
         {error && (
           <div className="notice notice-error login-error" role="alert" aria-atomic="true">
             <CircleAlert size={18} aria-hidden="true" />
             <span>{error}</span>
           </div>
         )}
-        <form className="seller-form login-form" onSubmit={submit}>
+        {!checkingSession && <form className="seller-form login-form" onSubmit={submit}>
           <label className="form-field" htmlFor="admin-email">
             <span>Email</span>
             <input
@@ -96,8 +117,8 @@ function AdminLogin({ navigate }) {
           <button className="button button-primary submit-button" type="submit" disabled={submitting}>
             {submitting ? 'Memeriksa…' : 'Masuk'}
           </button>
-        </form>
-        <p className="login-footnote">Tidak ada pendaftaran publik. Hubungi owner CarHub untuk akses.</p>
+        </form>}
+        {!checkingSession && <p className="login-footnote">Tidak ada pendaftaran publik. Hubungi owner CarHub untuk akses.</p>}
       </section>
     </main>
   )
