@@ -12,7 +12,7 @@ CarHub membantu calon pembeli menjelajahi mobil bekas dan menghubungi penjual se
 - **Detail mobil:** lihat foto, harga, spesifikasi, lokasi, dan deskripsi; hubungi penjual melalui WhatsApp dengan pesan yang sudah disiapkan.
 - **Wishlist:** simpan mobil favorit di browser dan buka kembali detailnya kapan saja.
 - **Pengajuan penjualan:** kirim informasi kendaraan untuk ditinjau admin. Foto dapat dipilih dari perangkat atau menggunakan URL HTTPS; listing yang disetujui akan ditampilkan di katalog.
-- **Portal admin:** kelola listing mobil, tinjau pengajuan, serta kelola akun admin sesuai peran. Dapat diakses [di sini](https://carhub-id.vercel.app/admin). Untuk keperluan demo, login menggunakan akun berikut:
+- **Portal admin:** kelola listing mobil, tinjau pengajuan, serta kelola akun admin sesuai peran. Dapat diakses [di sini](https://carhub-id-pwa-mirror.vercel.app/admin). Untuk keperluan demo, login menggunakan akun berikut:
     ```
     User: rootadmin@carhub.co.id  
     Password: AdminCarhub123!
@@ -34,7 +34,7 @@ CarHub membantu calon pembeli menjelajahi mobil bekas dan menghubungi penjual se
 
 ## Mulai cepat
 
-Jalankan backend dan frontend di terminal terpisah. Untuk penyiapan backend pertama kali, konfigurasi database, dan migrasi, ikuti [README backend](https://github.com/InnovaReborn1TR/CarHub-API/blob/main/README.md).
+Jalankan backend dan frontend di terminal terpisah. Untuk penyiapan backend pertama kali, konfigurasi database, dan migrasi, ikuti [README backend](https://github.com/MangOleh21/CarHub-API-Mirror/blob/main/README.md).
 
 **Terminal 1: backend**
 
@@ -73,7 +73,7 @@ Origin frontend yang diizinkan backend secara default adalah `http://localhost:5
 - `http://127.0.0.1:5173` merupakan origin yang berbeda dari `http://localhost:5173`.
 - Secara default, `npm run preview` menggunakan port `4173`, yang tidak termasuk dalam daftar origin yang diizinkan. Untuk menguji preview dengan API, tambahkan origin yang tepat ke konfigurasi `FRONTEND_ORIGINS` pada backend, lalu mulai ulang backend.
 
-Untuk penyiapan API dan detail endpoint, lihat [dokumentasi REST API](https://github.com/InnovaReborn1TR/CarHub-API/blob/main/docs/API_DOCUMENTATION.md).
+Untuk penyiapan API dan detail endpoint, lihat [dokumentasi REST API](https://github.com/MangOleh21/CarHub-API-Mirror/blob/main/docs/API_DOCUMENTATION.md).
 
 ## Halaman
 
