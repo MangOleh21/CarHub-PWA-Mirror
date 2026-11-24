@@ -6,6 +6,7 @@ import {
   getAdminDashboardSummary,
   getAdminUsers,
   getCars,
+  getCarBrands,
   reviewSubmission,
   uploadImageFile,
   uploadImageFiles,
@@ -75,6 +76,20 @@ test('getCars sends search, range, sorting filters and includes cookies in the A
     'https://images.example.test/car-side.jpg',
   ])
   assert.equal(result.pagination.page, 2)
+})
+
+test('getCarBrands returns the current brand options from the catalog API', async () => {
+  let requestUrl
+  globalThis.fetch = async (url) => {
+    requestUrl = url instanceof Request ? url.url : url
+    return new Response(JSON.stringify({
+      success: true,
+      data: ['Honda', 'Toyota'],
+    }), { status: 200 })
+  }
+
+  assert.deepEqual(await getCarBrands(), ['Honda', 'Toyota'])
+  assert.equal(requestUrl, 'http://localhost:5000/api/cars/brands')
 })
 
 test('getCars normalizes legacy single-image responses into a one-photo gallery', async () => {

@@ -12,6 +12,7 @@ const EMPTY_FORM = {
   model: '',
   year: '',
   transmission: 'Manual',
+  fuelType: 'Bensin',
   mileage: '',
   expectedPrice: '',
   location: '',
@@ -198,6 +199,18 @@ export default function SellPage() {
               <select id="submission-transmission" name="transmission" value={form.transmission} onChange={updateField}>
                 <option>Manual</option>
                 <option>Automatic</option>
+                <option>CVT</option>
+                <option>DCT</option>
+                <option>AMT</option>
+              </select>
+            </label>
+            <label className="form-field" htmlFor="submission-fuel-type">
+              <span>Bahan bakar</span>
+              <select id="submission-fuel-type" name="fuelType" value={form.fuelType} onChange={updateField}>
+                <option>Bensin</option>
+                <option>Diesel</option>
+                <option>Hybrid</option>
+                <option>Listrik</option>
               </select>
             </label>
             <Field name="mileage" label="Jarak tempuh (km)" type="number" min="0" max="2147483647" inputMode="numeric" value={form.mileage} onChange={updateField} error={errors.mileage} />

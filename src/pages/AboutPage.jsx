@@ -1,4 +1,5 @@
 import { ExternalLink, Smartphone } from 'lucide-react'
+import ThemeToggle from '../components/ThemeToggle.jsx'
 import { profile } from '../data/profile.js'
 
 export default function AboutPage() {
@@ -52,6 +53,12 @@ export default function AboutPage() {
           <div><dt>Database</dt><dd>Neon · PostgreSQL</dd></div>
           <div><dt>Platform</dt><dd>Progressive Web App</dd></div>
         </dl>
+      </section>
+
+      <section className="about-section theme-settings" aria-labelledby="theme-settings-title">
+        <p className="eyebrow">PREFERENSI</p>
+        <h2 id="theme-settings-title">Pengaturan tampilan</h2>
+        <ThemeToggle />
       </section>
 
       <section className="install-guide">

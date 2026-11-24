@@ -3,7 +3,6 @@ import { CircleAlert } from 'lucide-react'
 import AppLink from '../components/AppLink.jsx'
 import BrandMark from '../components/BrandMark.jsx'
 import { ErrorState, LoadingState } from '../components/Feedback.jsx'
-import ThemeToggle from '../components/ThemeToggle.jsx'
 import { getAdminLoginErrorMessage } from '../lib/admin-login.js'
 import AdminDashboard from './admin/AdminDashboard.jsx'
 import AdminCarEditor from './admin/AdminCarEditor.jsx'
@@ -70,7 +69,6 @@ function AdminLogin({ navigate }) {
           <BrandMark />
           <span><strong>CarHub</strong><small>ADMINISTRATOR</small></span>
         </AppLink>
-        <ThemeToggle />
       </header>
       <section className="admin-login-card">
         <p className="eyebrow">RUANG OPERASIONAL</p>

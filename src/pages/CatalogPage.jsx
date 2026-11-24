@@ -1,6 +1,6 @@
-import { Search } from 'lucide-react'
+import { Filter, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { getCars } from '../services/api.js'
+import { getCarBrands, getCars } from '../services/api.js'
 import CarCard from '../components/CarCard.jsx'
 import { EmptyState, ErrorState, LoadingState } from '../components/Feedback.jsx'
 
@@ -22,6 +22,9 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
   const [page, setPage] = useState(1)
   const [requestKey, setRequestKey] = useState(0)
   const [response, setResponse] = useState({ key: -1, result: null, error: null })
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [brandsRequestKey, setBrandsRequestKey] = useState(0)
+  const [brandsResponse, setBrandsResponse] = useState({ key: -1, brands: [], error: null })
 
   useEffect(() => {
     let active = true
@@ -31,9 +34,32 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
     return () => { active = false }
   }, [filters, page, requestKey])
 
+  useEffect(() => {
+    let active = true
+    getCarBrands()
+      .then((brands) => {
+        if (active) setBrandsResponse({ key: brandsRequestKey, brands, error: null })
+      })
+      .catch((cause) => {
+        if (active) setBrandsResponse({ key: brandsRequestKey, brands: [], error: cause.message })
+      })
+    return () => { active = false }
+  }, [brandsRequestKey])
+
   const loading = response.key !== requestKey
   const result = response.key === requestKey ? response.result : null
   const error = response.key === requestKey ? response.error : null
+  const brandsLoading = brandsResponse.key !== brandsRequestKey
+  const brands = brandsResponse.key === brandsRequestKey ? brandsResponse.brands : []
+  const brandsError = brandsResponse.key === brandsRequestKey ? brandsResponse.error : null
+  const activeFilterCount = [
+    filters.brand,
+    filters.transmission,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.minYear,
+    filters.maxYear,
+  ].filter(Boolean).length + Number(filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc')
 
   function applyFilters(event) {
     event.preventDefault()
@@ -89,18 +115,59 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
             onChange={(event) => setDraft((current) => ({ ...current, search: event.target.value }))}
           />
         </label>
-        <label className="search-field brand-field">
-          <span className="sr-only">Filter merk</span>
-          <input
-            type="search"
-            maxLength={100}
-            placeholder="Semua merk"
-            value={draft.brand}
-            onChange={(event) => setDraft((current) => ({ ...current, brand: event.target.value }))}
-          />
-        </label>
+        <button
+          className="button button-outline catalog-filter-toggle"
+          type="button"
+          aria-expanded={filtersOpen}
+          aria-controls="catalog-filter-options"
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <Filter size={16} aria-hidden="true" />
+          Filter
+          {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
+        </button>
         <button className="button button-primary search-submit" type="submit">Cari</button>
-        <div className="catalog-filters">
+        <div
+          className="catalog-filters"
+          id="catalog-filter-options"
+          hidden={!filtersOpen}
+        >
+          <fieldset className="catalog-brand-filter">
+            <legend>Merek</legend>
+            {brandsLoading && <p role="status">Memuat daftar merek...</p>}
+            {!brandsLoading && brandsError && (
+              <div className="catalog-brand-error" role="alert">
+                <span>Daftar merek gagal dimuat: {brandsError}</span>
+                <button
+                  className="catalog-retry-button"
+                  type="button"
+                  onClick={() => setBrandsRequestKey((key) => key + 1)}
+                >Coba lagi</button>
+              </div>
+            )}
+            {!brandsLoading && !brandsError && brands.length === 0 && (
+              <p>Belum ada merek di katalog.</p>
+            )}
+            {!brandsLoading && !brandsError && brands.length > 0 && (
+              <div className="catalog-brand-options" role="group" aria-label="Pilih satu merek">
+                <button
+                  className="catalog-brand-option"
+                  type="button"
+                  aria-pressed={!draft.brand}
+                  onClick={() => setDraft((current) => ({ ...current, brand: '' }))}
+                >Semua merek</button>
+                {brands.map((brand) => (
+                  <button
+                    className="catalog-brand-option"
+                    key={brand}
+                    type="button"
+                    aria-pressed={draft.brand === brand}
+                    onClick={() => setDraft((current) => ({ ...current, brand }))}
+                  >{brand}</button>
+                ))}
+              </div>
+            )}
+          </fieldset>
           <label className="catalog-filter-field">
             <span>Transmisi</span>
             <select
@@ -110,6 +177,9 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
               <option value="">Semua</option>
               <option value="Manual">Manual</option>
               <option value="Automatic">Automatic</option>
+              <option value="CVT">CVT</option>
+              <option value="DCT">DCT</option>
+              <option value="AMT">AMT</option>
             </select>
           </label>
           <label className="catalog-filter-field">

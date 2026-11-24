@@ -64,7 +64,7 @@ export default function WishlistPage({ navigate, wishlistIds, toggleWishlist }) 
             ? 'Data mobil tidak dapat dimuat saat ini.'
             : 'Simpan mobil dari katalog untuk membandingkannya nanti.'}
           action={!wishlistIds.length && (
-            <AppLink className="button button-primary" to="/" navigate={navigate}>Jelajahi katalog</AppLink>
+            <AppLink className="button button-primary" to="/catalog" navigate={navigate}>Jelajahi katalog</AppLink>
           )}
         />
       )}

@@ -3,7 +3,6 @@ import { ArrowUpRight, CarFront, ClipboardList, LogOut, RefreshCw, UsersRound } 
 import AppLink from '../../components/AppLink.jsx'
 import BrandMark from '../../components/BrandMark.jsx'
 import { ErrorState, LoadingState } from '../../components/Feedback.jsx'
-import ThemeToggle from '../../components/ThemeToggle.jsx'
 import { getAdminDashboardSummary, getAdminSession, logoutAdmin } from '../../services/api.js'
 import AdminCarsPanel from './AdminCarsPanel.jsx'
 import AdminSubmissionsPanel from './AdminSubmissionsPanel.jsx'
@@ -111,7 +110,6 @@ export default function AdminDashboard({ navigate }) {
           <span><strong>CarHub</strong><small>ADMIN CONSOLE</small></span>
         </AppLink>
         <div className="admin-header-actions">
-          <ThemeToggle />
           <div className="admin-identity">
             <span>{session.email}</span>
             <small>{session.role === 'owner' ? 'Owner' : 'Admin'}</small>
@@ -128,7 +126,7 @@ export default function AdminDashboard({ navigate }) {
             <p className="eyebrow">RUANG OPERASIONAL</p>
             <h1>Dashboard</h1>
           </div>
-          <AppLink className="text-link" to="/" navigate={navigate}>Lihat katalog <ArrowUpRight size={16} /></AppLink>
+          <AppLink className="text-link" to="/catalog" navigate={navigate}>Lihat katalog <ArrowUpRight size={16} /></AppLink>
         </div>
 
         {logoutError && <p className="notice notice-error" role="alert">{logoutError}</p>}

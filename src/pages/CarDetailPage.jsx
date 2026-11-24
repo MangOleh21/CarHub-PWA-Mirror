@@ -24,7 +24,7 @@ export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlis
   if (error) {
     return (
       <main className="page-content">
-        <AppLink className="back-link" to="/" navigate={navigate}><ArrowLeft size={17} /> Kembali ke katalog</AppLink>
+        <AppLink className="back-link" to="/catalog" navigate={navigate}><ArrowLeft size={17} /> Kembali ke katalog</AppLink>
         <ErrorState message={error} />
       </main>
     )
@@ -35,7 +35,7 @@ export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlis
 
   return (
     <main className="page-content detail-page">
-      <AppLink className="back-link" to="/" navigate={navigate}><ArrowLeft size={17} /> Kembali ke katalog</AppLink>
+      <AppLink className="back-link" to="/catalog" navigate={navigate}><ArrowLeft size={17} /> Kembali ke katalog</AppLink>
       <div className="detail-image-wrap">
         <ImageGallery
           images={car.images}

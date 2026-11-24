@@ -58,6 +58,7 @@ function SubmissionCard({ submission, onReview, busy }) {
         <div><dt>Penjual</dt><dd>{submission.sellerName} · {submission.sellerPhone}</dd></div>
         <div><dt>Harga</dt><dd>{formatPrice(submission.expectedPrice)}</dd></div>
         <div><dt>Detail</dt><dd>{submission.mileage.toLocaleString('id-ID')} km · {submission.transmission}</dd></div>
+        <div><dt>Bahan bakar</dt><dd>{submission.fuelType || 'Belum diisi'}</dd></div>
         <div><dt>Lokasi</dt><dd>{submission.location || 'Belum diisi'}</dd></div>
       </dl>
       <ImageGallery

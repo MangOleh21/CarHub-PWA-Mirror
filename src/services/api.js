@@ -239,6 +239,14 @@ export function getCars(options) {
   return list('/cars', options, parseCar)
 }
 
+export async function getCarBrands() {
+  const brands = readData(await request('/cars/brands'))
+  if (!Array.isArray(brands) || !brands.every((brand) => typeof brand === 'string' && brand.trim())) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Daftar merek dari server tidak valid.')
+  }
+  return brands
+}
+
 export async function getCar(id) {
   const payload = await request(`/cars/${encodeURIComponent(id)}`)
   return parseCar(readData(payload))

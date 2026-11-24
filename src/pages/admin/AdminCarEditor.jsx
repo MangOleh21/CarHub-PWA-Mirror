@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import AppLink from '../../components/AppLink.jsx'
 import { ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageUploader from '../../components/ImageUploader.jsx'
-import ThemeToggle from '../../components/ThemeToggle.jsx'
 import { useImageFileSelection } from '../../hooks/useImageFileSelection.js'
 import { maxImageCount } from '../../lib/image-upload.js'
 import { createCar, getAdminCar, getAdminSession, updateCar, uploadImageFiles } from '../../services/api.js'
+
+const FUEL_TYPES = ['Bensin', 'Diesel', 'Hybrid', 'Listrik']
 
 const EMPTY_CAR = {
   brand: '',
@@ -27,6 +28,7 @@ const EMPTY_CAR = {
 function carToForm(car) {
   return {
     ...car,
+    fuelType: car.fuelType || 'Bensin',
     imageUrl: '',
     year: String(car.year),
     mileage: String(car.mileage),
@@ -106,6 +108,7 @@ export default function AdminCarEditor({ carId, navigate }) {
   const errorSummary = useRef(null)
   const errorCount = Object.keys(errors).length + (imageError ? 1 : 0)
   const form = draft ?? (loaded.car ? carToForm(loaded.car) : EMPTY_CAR)
+  const selectedFuelType = form.fuelType || 'Bensin'
 
   useEffect(() => {
     let active = true
@@ -189,7 +192,6 @@ export default function AdminCarEditor({ carId, navigate }) {
     <div className="admin-shell">
       <header className="admin-editor-header">
         <AppLink className="back-link" to="/admin" navigate={navigate}><ArrowLeft size={17} /> Kembali ke dashboard</AppLink>
-        <ThemeToggle />
       </header>
       <main className="admin-editor-main">
         <div className="admin-title-row">
@@ -216,9 +218,18 @@ export default function AdminCarEditor({ carId, navigate }) {
                 <select id="car-transmission" name="transmission" value={form.transmission} onChange={updateField}>
                   <option>Manual</option>
                   <option>Automatic</option>
+                  <option>CVT</option>
+                  <option>DCT</option>
+                  <option>AMT</option>
                 </select>
               </label>
-              <EditorField name="fuelType" label="Bahan bakar" value={form.fuelType} onChange={updateField} maxLength={50} />
+              <label className="form-field" htmlFor="car-fuel-type">
+                <span>Bahan bakar</span>
+                <select id="car-fuel-type" name="fuelType" value={selectedFuelType} onChange={updateField}>
+                  {FUEL_TYPES.map((fuelType) => <option key={fuelType}>{fuelType}</option>)}
+                  {!FUEL_TYPES.includes(selectedFuelType) && <option>{selectedFuelType}</option>}
+                </select>
+              </label>
               <EditorField name="mileage" label="Jarak tempuh (km)" type="number" min="0" max="2147483647" value={form.mileage} onChange={updateField} error={errors.mileage} />
               <EditorField name="price" label="Harga (Rp)" type="number" min="1" step="1" value={form.price} onChange={updateField} error={errors.price} />
             </div>

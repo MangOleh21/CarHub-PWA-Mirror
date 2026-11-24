@@ -3,11 +3,11 @@ import { useCallback, useEffect, useState } from 'react'
 import AppLink from './components/AppLink.jsx'
 import BrandMark from './components/BrandMark.jsx'
 import BottomNav from './components/BottomNav.jsx'
-import ThemeToggle from './components/ThemeToggle.jsx'
 import AdminPortal from './pages/AdminPage.jsx'
 import ProfilePage from './pages/AboutPage.jsx'
 import CatalogPage from './pages/CatalogPage.jsx'
 import CarDetailPage from './pages/CarDetailPage.jsx'
+import LandingPage from './pages/LandingPage.jsx'
 import SellFormPage from './pages/SellPage.jsx'
 import WishlistPage from './pages/WishlistPage.jsx'
 import useWishlist from './hooks/useWishlist.js'
@@ -55,7 +55,7 @@ function NotFoundPage({ navigate }) {
     <main className="page-content not-found-page">
       <p className="eyebrow">404 · HALAMAN TIDAK DITEMUKAN</p>
       <h1>Halaman ini tidak ada.</h1>
-      <AppLink className="button button-primary" to="/" navigate={navigate}>Kembali ke katalog</AppLink>
+      <AppLink className="button button-primary" to="/catalog" navigate={navigate}>Kembali ke katalog</AppLink>
     </main>
   )
 }
@@ -91,6 +91,8 @@ export default function App() {
   const detailMatch = pathname.match(/^\/cars\/([1-9]\d*)$/)
   let page
   if (pathname === '/') {
+    page = <LandingPage navigate={navigate} wishlistIds={wishlistIds} toggleWishlist={toggleWishlist} />
+  } else if (pathname === '/catalog') {
     page = <CatalogPage navigate={navigate} wishlistIds={wishlistIds} toggleWishlist={toggleWishlist} />
   } else if (pathname === '/wishlist') {
     page = <WishlistPage navigate={navigate} wishlistIds={wishlistIds} toggleWishlist={toggleWishlist} />
@@ -118,12 +120,11 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="site-header">
-        <AppLink className="brand-lockup" to="/" navigate={navigate} aria-label="CarHub, ke katalog">
+        <AppLink className="brand-lockup" to="/" navigate={navigate} aria-label="CarHub, beranda">
           <BrandMark />
           <span><strong>CarHub</strong><small>Mobility, curated.</small></span>
         </AppLink>
         <div className="header-actions">
-          <ThemeToggle />
           <InstallPrompt />
         </div>
       </header>
