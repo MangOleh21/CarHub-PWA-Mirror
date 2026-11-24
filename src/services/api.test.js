@@ -4,6 +4,7 @@ import {
   ApiError,
   createSubmission,
   getAdminDashboardSummary,
+  getAdminUsers,
   getCars,
   reviewSubmission,
   uploadImageFile,
@@ -240,4 +241,25 @@ test('image upload rejects a Cloudinary response URL from another host', async (
     uploadImageFile(file, 'submissions'),
     (error) => error instanceof ApiError && error.code === 'INVALID_RESPONSE',
   )
+})
+
+test('getAdminUsers fetches and validates admin accounts list', async () => {
+  globalThis.fetch = async (input) => {
+    const requestUrl = input instanceof Request ? input.url : input
+    assert.equal(requestUrl, 'http://localhost:5000/api/admin/users')
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        admins: [
+          { id: '1', email: 'owner@example.test', role: 'owner', isActive: true },
+          { id: '2', email: 'staff@example.test', role: 'admin', isActive: false },
+        ],
+      },
+    }), { status: 200 })
+  }
+
+  const admins = await getAdminUsers()
+  assert.equal(admins.length, 2)
+  assert.equal(admins[0].email, 'owner@example.test')
+  assert.equal(admins[1].isActive, false)
 })
