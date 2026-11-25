@@ -419,6 +419,10 @@ export function archiveCar(id) {
   return request(`/admin/cars/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
+export function permanentlyDeleteArchivedCar(id) {
+  return request(`/admin/cars/${encodeURIComponent(id)}/permanent`, { method: 'DELETE' })
+}
+
 export function restoreCar(id) {
   return request(`/admin/cars/${encodeURIComponent(id)}/restore`, { method: 'PATCH' })
 }

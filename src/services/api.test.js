@@ -9,6 +9,7 @@ import {
   getAdminUsers,
   getCars,
   getCarBrands,
+  permanentlyDeleteArchivedCar,
   reviewSubmission,
   restoreCar,
   uploadImageFile,
@@ -129,6 +130,22 @@ test('archive and restore use the admin soft-delete endpoints', async () => {
     { url: 'http://localhost:5000/api/admin/cars/42', method: 'DELETE' },
     { url: 'http://localhost:5000/api/admin/cars/42/restore', method: 'PATCH' },
   ])
+})
+
+test('permanently deletes a car through the dedicated archive endpoint', async () => {
+  let requestUrl
+  let requestMethod
+  globalThis.fetch = async (input, options) => {
+    const request = input instanceof Request ? input : new Request(input, options)
+    requestUrl = request.url
+    requestMethod = request.method
+    return new Response(null, { status: 204 })
+  }
+
+  await permanentlyDeleteArchivedCar('42')
+
+  assert.equal(requestUrl, 'http://localhost:5000/api/admin/cars/42/permanent')
+  assert.equal(requestMethod, 'DELETE')
 })
 
 test('getCars normalizes legacy single-image responses into a one-photo gallery', async () => {

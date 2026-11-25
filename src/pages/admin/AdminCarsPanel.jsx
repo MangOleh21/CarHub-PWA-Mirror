@@ -7,17 +7,31 @@ import {
   Pencil,
   Plus,
   RotateCcw,
+  Trash2,
   X,
 } from 'lucide-react'
 import AppLink from '../../components/AppLink.jsx'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageGallery from '../../components/ImageGallery.jsx'
 import { formatMileage, formatPrice } from '../../lib/format.js'
-import { archiveCar, getAdminCars, restoreCar } from '../../services/api.js'
+import {
+  archiveCar,
+  getAdminCars,
+  permanentlyDeleteArchivedCar,
+  restoreCar,
+} from '../../services/api.js'
 
 const PAGE_SIZE = 20
 
-function AdminCarCard({ car, navigate, archived, updating, onArchiveChange, onViewGallery }) {
+function AdminCarCard({
+  car,
+  navigate,
+  archived,
+  updating,
+  onArchiveChange,
+  onPermanentlyDelete,
+  onViewGallery,
+}) {
   const [imageFailed, setImageFailed] = useState(false)
   const images = car.images?.length ? car.images : [car.imageUrl]
 
@@ -72,6 +86,18 @@ function AdminCarCard({ car, navigate, archived, updating, onArchiveChange, onVi
               ? <><RotateCcw size={16} aria-hidden="true" /> {updating ? 'Memulihkan…' : 'Pulihkan'}</>
               : <><Archive size={16} aria-hidden="true" /> {updating ? 'Mengarsipkan…' : 'Arsipkan'}</>}
           </button>
+          {archived && (
+            <button
+              className="button button-quiet"
+              type="button"
+              disabled={updating}
+              onClick={() => onPermanentlyDelete(car)}
+              aria-label={`Hapus permanen ${car.brand} ${car.model}`}
+            >
+              <Trash2 size={16} aria-hidden="true" />
+              {updating ? 'Menghapus…' : 'Hapus permanen'}
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -191,6 +217,27 @@ export default function AdminCarsPanel({ navigate, onDataChange }) {
     }
   }
 
+  async function permanentlyDelete(car) {
+    const name = `${car.brand} ${car.model}`
+    if (!window.confirm(
+      `Hapus permanen ${name}? Data katalog tidak dapat dipulihkan. Foto di object storage tetap tersimpan.`,
+    )) return
+
+    setUpdatingId(car.id)
+    setActionError(null)
+    setActionMessage(null)
+    try {
+      await permanentlyDeleteArchivedCar(car.id)
+      setActionMessage(`${name} dihapus permanen. Foto tetap tersimpan di object storage.`)
+      setRequestKey((key) => key + 1)
+      onDataChange()
+    } catch (cause) {
+      setActionError(cause.message)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   function selectArchiveStatus(status) {
     setArchiveStatus(status)
     setPage(1)
@@ -248,6 +295,7 @@ export default function AdminCarsPanel({ navigate, onDataChange }) {
                 archived={archiveStatus === 'archived'}
                 updating={updatingId === car.id}
                 onArchiveChange={updateArchive}
+                onPermanentlyDelete={permanentlyDelete}
                 onViewGallery={setGalleryCar}
               />
             ))}
