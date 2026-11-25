@@ -1,18 +1,36 @@
 import { ArrowLeft, Fuel, Gauge, Heart, MapPin, MessageCircle, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLink from '../components/AppLink.jsx'
-import { ErrorState, LoadingState } from '../components/Feedback.jsx'
+import ShareCarButton from '../components/ShareCarButton.jsx'
+import {
+  ErrorState,
+  LoadingState,
+  OfflineDataNotice,
+  OfflineFallbackPrompt,
+} from '../components/Feedback.jsx'
 import ImageGallery from '../components/ImageGallery.jsx'
 import { formatMileage, formatPrice, whatsappUrl } from '../lib/format.js'
 import { getCar } from '../services/api.js'
+import { canUseOfflineFallback, getOfflineCar, getOfflineCars } from '../services/offline-cars.js'
 
 export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlist }) {
   const [response, setResponse] = useState({ id: null, car: null, error: null })
   useEffect(() => {
     let active = true
-    getCar(id)
-      .then((data) => { if (active) setResponse({ id, car: data, error: null }) })
-      .catch((cause) => { if (active) setResponse({ id, car: null, error: cause.message }) })
+    const request = id.startsWith('offline-')
+      ? Promise.resolve(getOfflineCar(id))
+      : getCar(id)
+    request
+      .then((data) => {
+        if (active) {
+          setResponse({
+            id,
+            car: data,
+            error: data ? null : { message: 'Data mobil tidak ditemukan.', status: 404 },
+          })
+        }
+      })
+      .catch((cause) => { if (active) setResponse({ id, car: null, error: cause }) })
     return () => { active = false }
   }, [id])
 
@@ -25,7 +43,16 @@ export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlis
     return (
       <main className="page-content">
         <AppLink className="back-link" to="/catalog" navigate={navigate}><ArrowLeft size={17} /> Kembali ke katalog</AppLink>
-        <ErrorState message={error} />
+        <ErrorState message={error.message} />
+        {canUseOfflineFallback(error) && (
+          <OfflineFallbackPrompt
+            label="Lihat contoh mobil offline"
+            onUseOffline={() => {
+              const sample = getOfflineCars({ page: 1, pageSize: 1 }).data[0]
+              if (sample) navigate(`/cars/${sample.id}`)
+            }}
+          />
+        )}
       </main>
     )
   }
@@ -36,6 +63,7 @@ export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlis
   return (
     <main className="page-content detail-page">
       <AppLink className="back-link" to="/catalog" navigate={navigate}><ArrowLeft size={17} /> Kembali ke katalog</AppLink>
+      {car.isOfflineSample && <OfflineDataNotice />}
       <div className="detail-image-wrap">
         <ImageGallery
           images={car.images}
@@ -74,7 +102,7 @@ export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlis
 
       <section className="detail-description">
         <p className="eyebrow">TENTANG MOBIL</p>
-        <h2>Catatan penjual</h2>
+        <h2>Deskripsi mobil</h2>
         <p>{car.description || 'Penjual belum menambahkan deskripsi untuk mobil ini.'}</p>
       </section>
 
@@ -85,11 +113,16 @@ export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlis
 
       {contactLink ? (
         <a className="button button-whatsapp contact-button" href={contactLink} target="_blank" rel="noopener noreferrer">
-          <MessageCircle size={19} aria-hidden="true" /> Hubungi penjual via WhatsApp
+          <MessageCircle size={19} aria-hidden="true" /> Hubungi penjual
         </a>
       ) : (
-        <p className="notice notice-error" role="status">Nomor WhatsApp penjual belum dapat digunakan.</p>
+        <p className="notice notice-warning" role="status">
+          {car.isOfflineSample
+            ? 'Data contoh offline tidak memiliki kontak penjual.'
+            : 'Nomor WhatsApp penjual belum dapat digunakan.'}
+        </p>
       )}
+      {!car.isOfflineSample && <ShareCarButton car={car} />}
     </main>
   )
 }

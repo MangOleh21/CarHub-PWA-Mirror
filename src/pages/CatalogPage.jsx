@@ -2,11 +2,18 @@ import { Filter, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getCarBrands, getCars } from '../services/api.js'
 import CarCard from '../components/CarCard.jsx'
-import { EmptyState, ErrorState, LoadingState } from '../components/Feedback.jsx'
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  OfflineDataNotice,
+  OfflineFallbackPrompt,
+} from '../components/Feedback.jsx'
+import { canUseOfflineFallback, getOfflineCarBrands, getOfflineCars } from '../services/offline-cars.js'
 
 const PAGE_SIZE = 12
 
-export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
+export default function CatalogPage({ navigate, search: locationSearch, wishlistIds, toggleWishlist }) {
   const [draft, setDraft] = useState({
     search: '',
     brand: '',
@@ -22,20 +29,25 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
   const [page, setPage] = useState(1)
   const [requestKey, setRequestKey] = useState(0)
   const [response, setResponse] = useState({ key: -1, result: null, error: null })
+  const offlineMode = new URLSearchParams(locationSearch).get('offline') === '1'
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [brandsRequestKey, setBrandsRequestKey] = useState(0)
   const [brandsResponse, setBrandsResponse] = useState({ key: -1, brands: [], error: null })
 
   useEffect(() => {
     let active = true
-    getCars({ ...filters, page, pageSize: PAGE_SIZE })
+    const options = { ...filters, page, pageSize: PAGE_SIZE }
+    const request = offlineMode ? Promise.resolve(getOfflineCars(options)) : getCars(options)
+    request
       .then((data) => { if (active) setResponse({ key: requestKey, result: data, error: null }) })
-      .catch((cause) => { if (active) setResponse({ key: requestKey, result: null, error: cause.message }) })
+      .catch((cause) => { if (active) setResponse({ key: requestKey, result: null, error: cause }) })
     return () => { active = false }
-  }, [filters, page, requestKey])
+  }, [filters, offlineMode, page, requestKey])
 
   useEffect(() => {
     let active = true
+    if (offlineMode) return () => { active = false }
+
     getCarBrands()
       .then((brands) => {
         if (active) setBrandsResponse({ key: brandsRequestKey, brands, error: null })
@@ -44,14 +56,18 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
         if (active) setBrandsResponse({ key: brandsRequestKey, brands: [], error: cause.message })
       })
     return () => { active = false }
-  }, [brandsRequestKey])
+  }, [brandsRequestKey, offlineMode])
 
   const loading = response.key !== requestKey
   const result = response.key === requestKey ? response.result : null
   const error = response.key === requestKey ? response.error : null
-  const brandsLoading = brandsResponse.key !== brandsRequestKey
-  const brands = brandsResponse.key === brandsRequestKey ? brandsResponse.brands : []
-  const brandsError = brandsResponse.key === brandsRequestKey ? brandsResponse.error : null
+  const brandsLoading = !offlineMode && brandsResponse.key !== brandsRequestKey
+  const brands = offlineMode
+    ? getOfflineCarBrands()
+    : brandsResponse.key === brandsRequestKey ? brandsResponse.brands : []
+  const brandsError = offlineMode
+    ? null
+    : brandsResponse.key === brandsRequestKey ? brandsResponse.error : null
   const activeFilterCount = [
     filters.brand,
     filters.transmission,
@@ -94,6 +110,18 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
     filters.search || filters.brand || filters.transmission || filters.minPrice || filters.maxPrice
     || filters.minYear || filters.maxYear || filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc',
   )
+
+  function useOfflineCatalog() {
+    setPage(1)
+    setRequestKey((key) => key + 1)
+    navigate('/catalog?offline=1')
+  }
+
+  function reconnect() {
+    setPage(1)
+    setRequestKey((key) => key + 1)
+    navigate('/catalog')
+  }
 
   return (
     <main className="page-content catalog-page">
@@ -248,6 +276,7 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
       </form>
 
       <section className="catalog-results" aria-labelledby="catalog-heading">
+        {offlineMode && <OfflineDataNotice onReconnect={reconnect} />}
         <div className="section-heading">
           <div>
             <p className="eyebrow">KATALOG AKTIF</p>
@@ -257,7 +286,17 @@ export default function CatalogPage({ navigate, wishlistIds, toggleWishlist }) {
         </div>
 
         {loading && <LoadingState label="Memuat katalog mobil" />}
-        {!loading && error && <ErrorState message={error} onRetry={() => setRequestKey((key) => key + 1)} />}
+        {!loading && error && (
+          <>
+            <ErrorState
+              message={error.message}
+              onRetry={() => setRequestKey((key) => key + 1)}
+            />
+            {canUseOfflineFallback(error) && (
+              <OfflineFallbackPrompt onUseOffline={useOfflineCatalog} />
+            )}
+          </>
+        )}
         {!loading && !error && result?.data.length === 0 && (
           <EmptyState
             title="Belum ada mobil yang cocok"

@@ -194,6 +194,7 @@ function listQuery({
   search,
   brand,
   status,
+  archiveStatus,
   transmission,
   minPrice,
   maxPrice,
@@ -208,6 +209,7 @@ function listQuery({
   if (search?.trim()) params.set('search', search.trim())
   if (brand?.trim()) params.set('brand', brand.trim())
   if (status) params.set('status', status)
+  if (archiveStatus) params.set('archiveStatus', archiveStatus)
   for (const [key, value] of Object.entries({
     transmission,
     minPrice,
@@ -413,8 +415,12 @@ export async function updateCar(id, input) {
   })))
 }
 
-export function deleteCar(id) {
+export function archiveCar(id) {
   return request(`/admin/cars/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+export function restoreCar(id) {
+  return request(`/admin/cars/${encodeURIComponent(id)}/restore`, { method: 'PATCH' })
 }
 
 export function getAdminSubmissions(options = {}) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CircleAlert } from 'lucide-react'
+import { CircleAlert, Eye, EyeOff } from 'lucide-react'
 import AppLink from '../components/AppLink.jsx'
 import BrandMark from '../components/BrandMark.jsx'
 import { ErrorState, LoadingState } from '../components/Feedback.jsx'
@@ -30,6 +30,7 @@ export default function AdminPage({ pathname, navigate }) {
 function AdminLogin({ navigate }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
@@ -54,6 +55,7 @@ function AdminLogin({ navigate }) {
     try {
       await loginAdmin({ email: email.trim(), password })
       setPassword('')
+      setShowPassword(false)
       navigate('/admin')
     } catch (cause) {
       setError(getAdminLoginErrorMessage(cause))
@@ -101,16 +103,29 @@ function AdminLogin({ navigate }) {
           </label>
           <label className="form-field" htmlFor="admin-password">
             <span>Kata sandi</span>
-            <input
-              id="admin-password"
-              type="password"
-              autoComplete="current-password"
-              minLength={12}
-              maxLength={128}
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
+            <div className="password-input-wrap">
+              <input
+                id="admin-password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                minLength={12}
+                maxLength={128}
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+              <button
+                className="password-visibility-toggle"
+                type="button"
+                aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((visible) => !visible)}
+              >
+                {showPassword
+                  ? <EyeOff size={17} aria-hidden="true" />
+                  : <Eye size={17} aria-hidden="true" />}
+              </button>
+            </div>
           </label>
           <button className="button button-primary submit-button" type="submit" disabled={submitting}>
             {submitting ? 'Memeriksa…' : 'Masuk'}

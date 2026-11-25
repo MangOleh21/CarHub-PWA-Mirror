@@ -61,12 +61,19 @@ function NotFoundPage({ navigate }) {
 }
 
 export default function App() {
-  const [pathname, setPathname] = useState(() => window.location.pathname)
+  const [location, setLocation] = useState(() => ({
+    pathname: window.location.pathname,
+    search: window.location.search,
+  }))
+  const { pathname, search } = location
   const { wishlistIds, storageAvailable, toggleWishlist } = useWishlist()
 
   useEffect(() => {
     function updatePath() {
-      setPathname(window.location.pathname)
+      setLocation({
+        pathname: window.location.pathname,
+        search: window.location.search,
+      })
     }
     window.addEventListener('popstate', updatePath)
     return () => window.removeEventListener('popstate', updatePath)
@@ -82,18 +89,28 @@ export default function App() {
   }, [pathname])
 
   const navigate = useCallback((path) => {
-    if (path === window.location.pathname) return
-    window.history.pushState({}, '', path)
-    setPathname(path)
+    const destination = new URL(path, window.location.origin)
+    const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    const nextPath = `${destination.pathname}${destination.search}${destination.hash}`
+    if (nextPath === currentPath) return
+    window.history.pushState({}, '', nextPath)
+    setLocation({ pathname: destination.pathname, search: destination.search })
     window.scrollTo(0, 0)
   }, [])
 
-  const detailMatch = pathname.match(/^\/cars\/([1-9]\d*)$/)
+  const detailMatch = pathname.match(/^\/cars\/([1-9]\d*|offline-[a-z0-9-]+)$/)
   let page
   if (pathname === '/') {
     page = <LandingPage navigate={navigate} wishlistIds={wishlistIds} toggleWishlist={toggleWishlist} />
   } else if (pathname === '/catalog') {
-    page = <CatalogPage navigate={navigate} wishlistIds={wishlistIds} toggleWishlist={toggleWishlist} />
+    page = (
+      <CatalogPage
+        navigate={navigate}
+        search={search}
+        wishlistIds={wishlistIds}
+        toggleWishlist={toggleWishlist}
+      />
+    )
   } else if (pathname === '/wishlist') {
     page = <WishlistPage navigate={navigate} wishlistIds={wishlistIds} toggleWishlist={toggleWishlist} />
   } else if (pathname === '/sell') {

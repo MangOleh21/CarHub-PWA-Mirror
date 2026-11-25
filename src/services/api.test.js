@@ -2,12 +2,15 @@ import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import {
   ApiError,
+  archiveCar,
   createSubmission,
+  getAdminCars,
   getAdminDashboardSummary,
   getAdminUsers,
   getCars,
   getCarBrands,
   reviewSubmission,
+  restoreCar,
   uploadImageFile,
   uploadImageFiles,
 } from './api.js'
@@ -90,6 +93,42 @@ test('getCarBrands returns the current brand options from the catalog API', asyn
 
   assert.deepEqual(await getCarBrands(), ['Honda', 'Toyota'])
   assert.equal(requestUrl, 'http://localhost:5000/api/cars/brands')
+})
+
+test('getAdminCars requests the selected active or archived catalog', async () => {
+  let requestUrl
+  globalThis.fetch = async (url) => {
+    requestUrl = url instanceof Request ? url.url : url
+    return new Response(JSON.stringify({
+      success: true,
+      data: [],
+      pagination: { page: 1, pageSize: 20, totalItems: 0, totalPages: 0 },
+    }), { status: 200 })
+  }
+
+  await getAdminCars({ archiveStatus: 'archived' })
+
+  assert.equal(
+    requestUrl,
+    'http://localhost:5000/api/admin/cars?archiveStatus=archived&page=1&pageSize=20',
+  )
+})
+
+test('archive and restore use the admin soft-delete endpoints', async () => {
+  const requests = []
+  globalThis.fetch = async (input, options) => {
+    const request = input instanceof Request ? input : new Request(input, options)
+    requests.push({ url: request.url, method: request.method })
+    return new Response(null, { status: 204 })
+  }
+
+  await archiveCar('42')
+  await restoreCar('42')
+
+  assert.deepEqual(requests, [
+    { url: 'http://localhost:5000/api/admin/cars/42', method: 'DELETE' },
+    { url: 'http://localhost:5000/api/admin/cars/42/restore', method: 'PATCH' },
+  ])
 })
 
 test('getCars normalizes legacy single-image responses into a one-photo gallery', async () => {

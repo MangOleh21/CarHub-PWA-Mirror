@@ -17,6 +17,33 @@ export function ErrorState({ message, onRetry }) {
   )
 }
 
+export function OfflineFallbackPrompt({ onUseOffline, label = 'Gunakan data offline' }) {
+  return (
+    <div className="offline-fallback-prompt">
+      <p>Server tidak dapat dijangkau. Anda dapat melihat beberapa data contoh yang tersimpan di aplikasi.</p>
+      <button className="button button-outline" type="button" onClick={onUseOffline}>
+        {label}
+      </button>
+    </div>
+  )
+}
+
+export function OfflineDataNotice({ onReconnect }) {
+  return (
+    <div className="notice notice-warning offline-data-notice" role="status">
+      <p>
+        <strong>Data contoh offline</strong>
+        <span>Listing ini hanya untuk melihat fitur; bukan katalog aktif atau penawaran nyata.</span>
+      </p>
+      {onReconnect && (
+        <button className="button button-quiet" type="button" onClick={onReconnect}>
+          Coba online
+        </button>
+      )}
+    </div>
+  )
+}
+
 export function EmptyState({ title, message, action }) {
   return (
     <div className="empty-state" role="status">

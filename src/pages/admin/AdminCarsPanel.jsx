@@ -1,14 +1,23 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { ArrowRight, Image as ImageIcon, MapPin, Pencil, Plus, Trash2, X } from 'lucide-react'
+import {
+  Archive,
+  ArrowRight,
+  Image as ImageIcon,
+  MapPin,
+  Pencil,
+  Plus,
+  RotateCcw,
+  X,
+} from 'lucide-react'
 import AppLink from '../../components/AppLink.jsx'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageGallery from '../../components/ImageGallery.jsx'
 import { formatMileage, formatPrice } from '../../lib/format.js'
-import { deleteCar, getAdminCars } from '../../services/api.js'
+import { archiveCar, getAdminCars, restoreCar } from '../../services/api.js'
 
 const PAGE_SIZE = 20
 
-function AdminCarCard({ car, navigate, deleting, onDelete, onViewGallery }) {
+function AdminCarCard({ car, navigate, archived, updating, onArchiveChange, onViewGallery }) {
   const [imageFailed, setImageFailed] = useState(false)
   const images = car.images?.length ? car.images : [car.imageUrl]
 
@@ -27,6 +36,7 @@ function AdminCarCard({ car, navigate, deleting, onDelete, onViewGallery }) {
           />
         )}
         <span className="car-year">{car.year} · {car.transmission}</span>
+        {archived && <span className="admin-archived-badge">Diarsipkan</span>}
         <button
           className="admin-car-gallery-trigger"
           type="button"
@@ -52,13 +62,15 @@ function AdminCarCard({ car, navigate, deleting, onDelete, onViewGallery }) {
             aria-label={`Edit ${car.brand} ${car.model}`}
           ><Pencil size={16} aria-hidden="true" /> Edit</AppLink>
           <button
-            className="button button-danger-quiet"
+            className="button button-quiet"
             type="button"
-            disabled={deleting}
-            onClick={() => onDelete(car)}
-            aria-label={`Hapus ${car.brand} ${car.model}`}
+            disabled={updating}
+            onClick={() => onArchiveChange(car)}
+            aria-label={`${archived ? 'Pulihkan' : 'Arsipkan'} ${car.brand} ${car.model}`}
           >
-            <Trash2 size={16} aria-hidden="true" /> {deleting ? 'Menghapus…' : 'Hapus'}
+            {archived
+              ? <><RotateCcw size={16} aria-hidden="true" /> {updating ? 'Memulihkan…' : 'Pulihkan'}</>
+              : <><Archive size={16} aria-hidden="true" /> {updating ? 'Mengarsipkan…' : 'Arsipkan'}</>}
           </button>
         </div>
       </div>
@@ -138,60 +150,92 @@ function AdminCarGalleryDialog({ car, onClose }) {
 }
 
 export default function AdminCarsPanel({ navigate, onDataChange }) {
+  const [archiveStatus, setArchiveStatus] = useState('active')
   const [page, setPage] = useState(1)
   const [requestKey, setRequestKey] = useState(0)
   const [response, setResponse] = useState({ key: -1, result: null, error: null })
   const [actionError, setActionError] = useState(null)
-  const [deletingId, setDeletingId] = useState(null)
+  const [actionMessage, setActionMessage] = useState(null)
+  const [updatingId, setUpdatingId] = useState(null)
   const [galleryCar, setGalleryCar] = useState(null)
 
   useEffect(() => {
     let active = true
-    getAdminCars({ page, pageSize: PAGE_SIZE })
+    getAdminCars({ archiveStatus, page, pageSize: PAGE_SIZE })
       .then((result) => { if (active) setResponse({ key: requestKey, result, error: null }) })
       .catch((error) => { if (active) setResponse({ key: requestKey, result: null, error: error.message }) })
     return () => { active = false }
-  }, [page, requestKey])
+  }, [archiveStatus, page, requestKey])
 
   const loading = response.key !== requestKey
   const result = response.key === requestKey ? response.result : null
   const error = response.key === requestKey ? response.error : null
 
-  async function removeCar(car) {
-    const confirmed = window.confirm(
-      `Hapus ${car.brand} ${car.model} secara permanen? Tindakan ini tidak dapat dibatalkan.`,
-    )
-    if (!confirmed) return
-
-    setDeletingId(car.id)
+  async function updateArchive(car) {
+    const restoring = archiveStatus === 'archived'
+    setUpdatingId(car.id)
     setActionError(null)
+    setActionMessage(null)
     try {
-      await deleteCar(car.id)
+      if (restoring) await restoreCar(car.id)
+      else await archiveCar(car.id)
+      setActionMessage(restoring
+        ? `${car.brand} ${car.model} dipulihkan ke katalog aktif.`
+        : `${car.brand} ${car.model} dipindahkan ke arsip.`)
       setRequestKey((key) => key + 1)
       onDataChange()
     } catch (cause) {
       setActionError(cause.message)
     } finally {
-      setDeletingId(null)
+      setUpdatingId(null)
     }
+  }
+
+  function selectArchiveStatus(status) {
+    setArchiveStatus(status)
+    setPage(1)
+    setActionMessage(null)
+    setRequestKey((key) => key + 1)
   }
 
   return (
     <section className="admin-panel">
       <div className="admin-panel-heading">
         <div>
-          <p className="eyebrow">DATA PUBLIK</p>
-          <h2>Katalog aktif</h2>
+          <p className="eyebrow">{archiveStatus === 'active' ? 'DATA PUBLIK' : 'DATA TERSIMPAN'}</p>
+          <h2>{archiveStatus === 'active' ? 'Katalog aktif' : 'Arsip mobil'}</h2>
         </div>
-        <AppLink className="button button-primary" to="/admin/cars/new" navigate={navigate}>
-          <Plus size={17} aria-hidden="true" /> Tambah mobil
-        </AppLink>
+        {archiveStatus === 'active' && (
+          <AppLink className="button button-primary" to="/admin/cars/new" navigate={navigate}>
+            <Plus size={17} aria-hidden="true" /> Tambah mobil
+          </AppLink>
+        )}
       </div>
+      <nav className="admin-tabs admin-car-archive-tabs" aria-label="Status katalog mobil">
+        <button
+          className={`admin-tab${archiveStatus === 'active' ? ' is-active' : ''}`}
+          type="button"
+          aria-pressed={archiveStatus === 'active'}
+          onClick={() => selectArchiveStatus('active')}
+        >Katalog aktif</button>
+        <button
+          className={`admin-tab${archiveStatus === 'archived' ? ' is-active' : ''}`}
+          type="button"
+          aria-pressed={archiveStatus === 'archived'}
+          onClick={() => selectArchiveStatus('archived')}
+        >Arsip</button>
+      </nav>
       {actionError && <p className="notice notice-error" role="alert">{actionError}</p>}
+      {actionMessage && <p className="notice notice-success" role="status">{actionMessage}</p>}
       {loading && <LoadingState label="Memuat katalog admin" />}
       {!loading && error && <ErrorState message={error} onRetry={() => setRequestKey((key) => key + 1)} />}
       {!loading && !error && result?.data.length === 0 && (
-        <EmptyState title="Katalog masih kosong" message="Tambahkan listing pertama agar tersedia di katalog publik." />
+        <EmptyState
+          title={archiveStatus === 'active' ? 'Katalog masih kosong' : 'Belum ada mobil di arsip'}
+          message={archiveStatus === 'active'
+            ? 'Tambahkan listing pertama agar tersedia di katalog publik.'
+            : 'Mobil yang Anda arsipkan akan muncul di sini dan dapat dipulihkan.'}
+        />
       )}
       {!loading && !error && result?.data.length > 0 && (
         <>
@@ -201,8 +245,9 @@ export default function AdminCarsPanel({ navigate, onDataChange }) {
                 key={car.id}
                 car={car}
                 navigate={navigate}
-                deleting={deletingId === car.id}
-                onDelete={removeCar}
+                archived={archiveStatus === 'archived'}
+                updating={updatingId === car.id}
+                onArchiveChange={updateArchive}
                 onViewGallery={setGalleryCar}
               />
             ))}

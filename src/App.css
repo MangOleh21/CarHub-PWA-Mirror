@@ -700,6 +700,29 @@ h1 em,
   margin-bottom: 3px;
 }
 
+.car-share {
+  display: grid;
+  justify-items: stretch;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.car-share > .button {
+  width: 100%;
+  min-height: 54px;
+}
+
+.car-share-feedback {
+  margin: 5px 0 0;
+  color: var(--color-success);
+  font-size: 11px;
+  text-align: right;
+}
+
+.car-share-feedback[role="alert"] {
+  color: var(--color-danger);
+}
+
 .section-heading h2,
 .admin-panel-heading h2 {
   margin: 0;
@@ -1011,6 +1034,43 @@ h1 em,
   border-color: var(--color-warning);
   background: var(--color-warning-soft);
   color: var(--color-warning);
+}
+
+.offline-fallback-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 7px;
+  background: var(--color-surface);
+}
+
+.offline-fallback-prompt p {
+  flex: 1 1 240px;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.offline-data-notice {
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.offline-data-notice p {
+  display: grid;
+  gap: 3px;
+  color: var(--color-warning);
+  font-size: 11px;
+}
+
+.offline-data-notice strong {
+  font-size: 12px;
 }
 
 .notice-success,
@@ -1398,6 +1458,34 @@ h1 em,
   color: var(--color-text);
   font-size: 13px;
   font-weight: 400;
+}
+
+.password-input-wrap {
+  position: relative;
+}
+
+.password-input-wrap input {
+  padding-right: 52px;
+}
+
+.password-visibility-toggle {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: grid;
+  width: 40px;
+  min-height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+
+.password-visibility-toggle:hover {
+  background: var(--color-ice);
+  color: var(--color-brand);
 }
 
 .form-field textarea {
@@ -1899,6 +1987,10 @@ h1 em,
   flex: 0 0 auto;
 }
 
+.admin-car-archive-tabs {
+  margin-bottom: 18px;
+}
+
 .admin-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1916,6 +2008,20 @@ h1 em,
 
 .admin-car-image-wrap {
   isolation: isolate;
+}
+
+.admin-archived-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--color-warning);
+  border-radius: 4px;
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  font-size: 10px;
+  font-weight: 600;
 }
 
 .admin-car-gallery-trigger {

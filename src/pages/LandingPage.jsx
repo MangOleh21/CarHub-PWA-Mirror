@@ -2,8 +2,15 @@ import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLink from '../components/AppLink.jsx'
 import CarCard from '../components/CarCard.jsx'
-import { EmptyState, ErrorState, LoadingState } from '../components/Feedback.jsx'
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  OfflineDataNotice,
+  OfflineFallbackPrompt,
+} from '../components/Feedback.jsx'
 import { getCars } from '../services/api.js'
+import { canUseOfflineFallback, getOfflineCars } from '../services/offline-cars.js'
 
 const FEATURED_CAR_LIMIT = 4
 
@@ -38,19 +45,20 @@ function LandingVisual({ car }) {
 
 export default function LandingPage({ navigate, wishlistIds, toggleWishlist }) {
   const [requestKey, setRequestKey] = useState(0)
+  const [offlineMode, setOfflineMode] = useState(false)
   const [response, setResponse] = useState({ key: -1, cars: [], error: null })
 
   useEffect(() => {
     let active = true
-    getCars({ page: 1, pageSize: FEATURED_CAR_LIMIT, sortBy: 'createdAt', sortOrder: 'desc' })
+    const options = { page: 1, pageSize: FEATURED_CAR_LIMIT, sortBy: 'createdAt', sortOrder: 'desc' }
+    const request = offlineMode ? Promise.resolve(getOfflineCars(options)) : getCars(options)
+    request
       .then(({ data }) => {
         if (active) setResponse({ key: requestKey, cars: data, error: null })
       })
-      .catch((cause) => {
-        if (active) setResponse({ key: requestKey, cars: [], error: cause.message })
-      })
+      .catch((cause) => { if (active) setResponse({ key: requestKey, cars: [], error: cause }) })
     return () => { active = false }
-  }, [requestKey])
+  }, [offlineMode, requestKey])
 
   const loading = response.key !== requestKey
   const cars = response.key === requestKey ? response.cars : []
@@ -67,7 +75,11 @@ export default function LandingPage({ navigate, wishlistIds, toggleWishlist }) {
             Semua tanpa perlu membuat akun pembeli.
           </p>
           <div className="landing-actions">
-            <AppLink className="button button-primary" to="/catalog" navigate={navigate}>
+            <AppLink
+              className="button button-primary"
+              to={offlineMode ? '/catalog?offline=1' : '/catalog'}
+              navigate={navigate}
+            >
               Jelajahi katalog <ArrowRight size={17} aria-hidden="true" />
             </AppLink>
             <AppLink className="button button-outline" to="/sell" navigate={navigate}>Jual mobil</AppLink>
@@ -95,18 +107,39 @@ export default function LandingPage({ navigate, wishlistIds, toggleWishlist }) {
       </section>
 
       <section className="landing-section" aria-labelledby="latest-cars-heading">
+        {offlineMode && <OfflineDataNotice onReconnect={() => {
+          setOfflineMode(false)
+          setRequestKey((key) => key + 1)
+        }} />}
         <div className="section-heading landing-section-heading">
           <div>
             <p className="eyebrow">BARU DI CARHUB</p>
             <h2 id="latest-cars-heading">Pilihan terbaru</h2>
           </div>
-          <AppLink className="text-link" to="/catalog" navigate={navigate}>
+          <AppLink
+            className="text-link"
+            to={offlineMode ? '/catalog?offline=1' : '/catalog'}
+            navigate={navigate}
+          >
             Lihat katalog <ArrowUpRight size={16} aria-hidden="true" />
           </AppLink>
         </div>
         {loading && <LoadingState label="Memuat pilihan terbaru" />}
         {!loading && error && (
-          <ErrorState message={error} onRetry={() => setRequestKey((key) => key + 1)} />
+          <>
+            <ErrorState
+              message={error.message}
+              onRetry={() => setRequestKey((key) => key + 1)}
+            />
+            {canUseOfflineFallback(error) && (
+              <OfflineFallbackPrompt
+                onUseOffline={() => {
+                  setOfflineMode(true)
+                  setRequestKey((key) => key + 1)
+                }}
+              />
+            )}
+          </>
         )}
         {!loading && !error && cars.length === 0 && (
           <EmptyState
