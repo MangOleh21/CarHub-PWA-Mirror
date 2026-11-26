@@ -4,7 +4,7 @@ import { normalizePageInput } from '../lib/pagination.js'
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
 
-export default function AdminPagination({
+export default function PaginationControls({
   currentPage,
   pageSize,
   totalPages,
@@ -30,7 +30,7 @@ export default function AdminPagination({
 
   return (
     <nav
-      className={`pagination admin-pagination${hasPageControls ? ' has-page-controls' : ''}`}
+      className={`pagination pagination-controls${hasPageControls ? ' has-page-controls' : ''}`}
       aria-label={label}
     >
       {hasPageControls && (
@@ -43,7 +43,7 @@ export default function AdminPagination({
           >
             <ChevronLeft size={15} aria-hidden="true" /> Sebelumnya
           </button>
-          <label className="admin-pagination-page">
+          <label className="pagination-page">
             <span>Halaman</span>
             <input
               type="number"
@@ -68,7 +68,7 @@ export default function AdminPagination({
           </label>
         </>
       )}
-      <label className="admin-pagination-size">
+      <label className="pagination-size">
         <span>Item per halaman</span>
         <select
           aria-label="Jumlah item per halaman"

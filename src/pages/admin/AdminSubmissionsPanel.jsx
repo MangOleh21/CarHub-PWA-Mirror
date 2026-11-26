@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
-import AdminPagination from '../../components/AdminPagination.jsx'
+import PaginationControls from '../../components/PaginationControls.jsx'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageGallery from '../../components/ImageGallery.jsx'
 import { formatPrice } from '../../lib/format.js'
@@ -199,7 +199,7 @@ export default function AdminSubmissionsPanel({ onDataChange }) {
             ))}
           </div>
           {result.data.length > 0 && (
-            <AdminPagination
+            <PaginationControls
               currentPage={page}
               pageSize={pageSize}
               totalPages={result.pagination.totalPages}

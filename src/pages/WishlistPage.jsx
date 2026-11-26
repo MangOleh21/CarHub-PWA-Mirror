@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import AppLink from '../components/AppLink.jsx'
 import CarCard from '../components/CarCard.jsx'
+import PaginationControls from '../components/PaginationControls.jsx'
 import {
   EmptyState,
   ErrorState,
   LoadingState,
 } from '../components/Feedback.jsx'
 import { getCar } from '../services/api.js'
+import { getPageItems } from '../lib/pagination.js'
 import { canUseOfflineFallback, getOfflineCar } from '../services/offline-cars.js'
 
 export default function WishlistPage({ navigate, wishlistIds, toggleWishlist }) {
@@ -18,6 +20,8 @@ export default function WishlistPage({ navigate, wishlistIds, toggleWishlist }) 
     offlineAvailable: false,
   })
   const [retryKey, setRetryKey] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const requestKey = `${wishlistIds.join(',')}|${retryKey}`
 
   useEffect(() => {
@@ -71,6 +75,17 @@ export default function WishlistPage({ navigate, wishlistIds, toggleWishlist }) 
   const error = response.key === requestKey ? response.error : null
   const unavailable = response.key === requestKey ? response.unavailable : 0
   const offlineAvailable = response.key === requestKey && response.offlineAvailable
+  const pageResult = getPageItems(cars, page, pageSize)
+
+  function changePageSize(nextPageSize) {
+    setPageSize(nextPageSize)
+    setPage(1)
+  }
+
+  function toggleSaved(id) {
+    setPage(1)
+    toggleWishlist(id)
+  }
 
   return (
     <main className="page-content">
@@ -106,17 +121,27 @@ export default function WishlistPage({ navigate, wishlistIds, toggleWishlist }) 
         />
       )}
       {!loading && !error && cars.length > 0 && (
-        <div className="car-grid">
-          {cars.map((car) => (
-            <CarCard
-              key={car.id}
-              car={car}
-              navigate={navigate}
-              isSaved
-              onToggleSaved={toggleWishlist}
-            />
-          ))}
-        </div>
+        <>
+          <div className="car-grid">
+            {pageResult.items.map((car) => (
+              <CarCard
+                key={car.id}
+                car={car}
+                navigate={navigate}
+                isSaved
+                onToggleSaved={toggleSaved}
+              />
+            ))}
+          </div>
+          <PaginationControls
+            currentPage={pageResult.page}
+            pageSize={pageSize}
+            totalPages={pageResult.totalPages}
+            onPageChange={setPage}
+            onPageSizeChange={changePageSize}
+            label="Navigasi halaman mobil favorit"
+          />
+        </>
       )}
     </main>
   )

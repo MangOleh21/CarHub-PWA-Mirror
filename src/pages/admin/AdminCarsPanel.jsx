@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import AppLink from '../../components/AppLink.jsx'
 import AdminCarDetailsDialog from '../../components/AdminCarDetailsDialog.jsx'
-import AdminPagination from '../../components/AdminPagination.jsx'
+import PaginationControls from '../../components/PaginationControls.jsx'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageGallery from '../../components/ImageGallery.jsx'
 import { formatMileage, formatPrice } from '../../lib/format.js'
@@ -322,7 +322,7 @@ export default function AdminCarsPanel({ navigate, onDataChange }) {
             ))}
           </div>
           {result.data.length > 0 && (
-            <AdminPagination
+            <PaginationControls
               currentPage={page}
               pageSize={pageSize}
               totalPages={result.pagination.totalPages}

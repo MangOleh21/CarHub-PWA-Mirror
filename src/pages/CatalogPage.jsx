@@ -2,6 +2,7 @@ import { Filter, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { getCarBrands, getCars } from '../services/api.js'
 import CarCard from '../components/CarCard.jsx'
+import PaginationControls from '../components/PaginationControls.jsx'
 import {
   EmptyState,
   ErrorState,
@@ -10,8 +11,6 @@ import {
   OfflineFallbackPrompt,
 } from '../components/Feedback.jsx'
 import { canUseOfflineFallback, getOfflineCarBrands, getOfflineCars } from '../services/offline-cars.js'
-
-const PAGE_SIZE = 12
 
 export default function CatalogPage({ navigate, search: locationSearch, wishlistIds, toggleWishlist }) {
   const [draft, setDraft] = useState({
@@ -27,6 +26,7 @@ export default function CatalogPage({ navigate, search: locationSearch, wishlist
   })
   const [filters, setFilters] = useState({ ...draft })
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [requestKey, setRequestKey] = useState(0)
   const [response, setResponse] = useState({ key: -1, result: null, error: null })
   const offlineMode = new URLSearchParams(locationSearch).get('offline') === '1'
@@ -36,13 +36,13 @@ export default function CatalogPage({ navigate, search: locationSearch, wishlist
 
   useEffect(() => {
     let active = true
-    const options = { ...filters, page, pageSize: PAGE_SIZE }
+    const options = { ...filters, page, pageSize }
     const request = offlineMode ? Promise.resolve(getOfflineCars(options)) : getCars(options)
     request
       .then((data) => { if (active) setResponse({ key: requestKey, result: data, error: null }) })
       .catch((cause) => { if (active) setResponse({ key: requestKey, result: null, error: cause }) })
     return () => { active = false }
-  }, [filters, offlineMode, page, requestKey])
+  }, [filters, offlineMode, page, pageSize, requestKey])
 
   useEffect(() => {
     let active = true
@@ -110,6 +110,17 @@ export default function CatalogPage({ navigate, search: locationSearch, wishlist
     filters.search || filters.brand || filters.transmission || filters.minPrice || filters.maxPrice
     || filters.minYear || filters.maxYear || filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc',
   )
+
+  function changePage(nextPage) {
+    setPage(nextPage)
+    setRequestKey((key) => key + 1)
+  }
+
+  function changePageSize(nextPageSize) {
+    setPageSize(nextPageSize)
+    setPage(1)
+    setRequestKey((key) => key + 1)
+  }
 
   function useOfflineCatalog() {
     setPage(1)
@@ -319,28 +330,15 @@ export default function CatalogPage({ navigate, search: locationSearch, wishlist
                 />
               ))}
             </div>
-            {result.pagination.totalPages > 1 && (
-              <div className="pagination">
-                <button
-                  className="button button-outline"
-                  type="button"
-                  disabled={page <= 1}
-                  onClick={() => {
-                    setPage((current) => current - 1)
-                    setRequestKey((key) => key + 1)
-                  }}
-                >Sebelumnya</button>
-                <span>Halaman {page} dari {result.pagination.totalPages}</span>
-                <button
-                  className="button button-outline"
-                  type="button"
-                  disabled={page >= result.pagination.totalPages}
-                  onClick={() => {
-                    setPage((current) => current + 1)
-                    setRequestKey((key) => key + 1)
-                  }}
-                >Berikutnya</button>
-              </div>
+            {result.data.length > 0 && (
+              <PaginationControls
+                currentPage={page}
+                pageSize={pageSize}
+                totalPages={result.pagination.totalPages}
+                onPageChange={changePage}
+                onPageSizeChange={changePageSize}
+                label="Navigasi halaman katalog mobil"
+              />
             )}
           </>
         )}
