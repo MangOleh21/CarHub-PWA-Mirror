@@ -3,6 +3,7 @@ import { Check, X } from 'lucide-react'
 import PaginationControls from '../../components/PaginationControls.jsx'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageGallery from '../../components/ImageGallery.jsx'
+import { BODY_TYPE_OPTIONS, COLOR_OPTIONS } from '../../lib/car-options.js'
 import { formatPrice } from '../../lib/format.js'
 import { getAdminSubmissions, reviewSubmission } from '../../services/api.js'
 
@@ -10,6 +11,8 @@ function SubmissionCard({ submission, onReview, busy }) {
   const [reviewNote, setReviewNote] = useState('')
   const [location, setLocation] = useState('')
   const [imageUrl, setImageUrl] = useState('')
+  const [color, setColor] = useState('')
+  const [bodyType, setBodyType] = useState('')
   const [error, setError] = useState(null)
 
   async function review(decision) {
@@ -37,6 +40,8 @@ function SubmissionCard({ submission, onReview, busy }) {
     if (decision === 'approved' && !submission.images.length && imageUrl.trim()) {
       input.images = [imageUrl.trim()]
     }
+    if (decision === 'approved' && !submission.color && color) input.color = color
+    if (decision === 'approved' && !submission.bodyType && bodyType) input.bodyType = bodyType
     try {
       await onReview(submission.id, decision, input)
     } catch (cause) {
@@ -58,6 +63,8 @@ function SubmissionCard({ submission, onReview, busy }) {
         <div><dt>Harga</dt><dd>{formatPrice(submission.expectedPrice)}</dd></div>
         <div><dt>Detail</dt><dd>{submission.mileage.toLocaleString('id-ID')} km · {submission.transmission}</dd></div>
         <div><dt>Bahan bakar</dt><dd>{submission.fuelType || 'Belum diisi'}</dd></div>
+        <div><dt>Tipe mobil</dt><dd>{submission.bodyType || '-'}</dd></div>
+        <div><dt>Warna</dt><dd>{submission.color || '-'}</dd></div>
         <div><dt>Lokasi</dt><dd>{submission.location || 'Belum diisi'}</dd></div>
       </dl>
       <ImageGallery
@@ -70,7 +77,7 @@ function SubmissionCard({ submission, onReview, busy }) {
 
       {submission.status === 'pending' && (
         <div className="submission-review">
-          {(!submission.location || !submission.images.length) && (
+          {(!submission.location || !submission.images.length || !submission.bodyType || !submission.color) && (
             <div className="form-grid">
               {!submission.location && (
                 <label className="form-field">
@@ -82,6 +89,24 @@ function SubmissionCard({ submission, onReview, busy }) {
                 <label className="form-field">
                   <span>Lengkapi URL foto HTTPS</span>
                   <input type="url" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} />
+                </label>
+              )}
+              {!submission.bodyType && (
+                <label className="form-field">
+                  <span>Lengkapi tipe mobil <small>Opsional</small></span>
+                  <select value={bodyType} onChange={(event) => setBodyType(event.target.value)}>
+                    <option value="">Biarkan kosong</option>
+                    {BODY_TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
+                </label>
+              )}
+              {!submission.color && (
+                <label className="form-field">
+                  <span>Lengkapi warna <small>Opsional</small></span>
+                  <select value={color} onChange={(event) => setColor(event.target.value)}>
+                    <option value="">Biarkan kosong</option>
+                    {COLOR_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </select>
                 </label>
               )}
             </div>

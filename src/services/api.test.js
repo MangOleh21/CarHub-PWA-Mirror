@@ -3,15 +3,25 @@ import { afterEach, test } from 'node:test'
 import {
   ApiError,
   archiveCar,
+  createAdminCustomer,
   createSubmission,
+  deleteAdminCustomer,
   getAdminCars,
+  getAdminCustomers,
   getAdminDashboardSummary,
   getAdminUsers,
   getCars,
   getCarBrands,
+  getMyListings,
+  getUserSession,
+  loginUser,
+  logoutUser,
   permanentlyDeleteArchivedCar,
+  registerUser,
   reviewSubmission,
   restoreCar,
+  updateAdminCustomer,
+  updateMyProfile,
   uploadImageFile,
   uploadImageFiles,
 } from './api.js'
@@ -38,6 +48,8 @@ test('getCars sends search, range, sorting filters and includes cookies in the A
         year: 2020,
         transmission: 'Automatic',
         fuelType: 'Bensin',
+        color: 'Putih',
+        bodyType: 'MPV',
         mileage: 25000,
         price: '180000000',
         imageUrl: 'https://images.example.test/car.jpg',
@@ -59,6 +71,9 @@ test('getCars sends search, range, sorting filters and includes cookies in the A
     search: 'Avanza & X',
     brand: 'Toyota',
     transmission: 'Automatic',
+    fuelType: 'Bensin',
+    color: 'Putih',
+    bodyType: ['MPV', 'SUV'],
     minPrice: 100000000,
     maxPrice: 200000000,
     minYear: 2018,
@@ -71,10 +86,12 @@ test('getCars sends search, range, sorting filters and includes cookies in the A
 
   assert.equal(
     requestUrl,
-    'http://localhost:5000/api/cars?search=Avanza+%26+X&brand=Toyota&transmission=Automatic&minPrice=100000000&maxPrice=200000000&minYear=2018&maxYear=2022&sortBy=price&sortOrder=asc&page=2&pageSize=10',
+    'http://localhost:5000/api/cars?search=Avanza+%26+X&brand=Toyota&transmission=Automatic&fuelType=Bensin&color=Putih&minPrice=100000000&maxPrice=200000000&minYear=2018&maxYear=2022&sortBy=price&sortOrder=asc&bodyType=MPV&bodyType=SUV&page=2&pageSize=10',
   )
   assert.equal(requestOptions.credentials, 'include')
   assert.equal(result.data[0].id, '42')
+  assert.equal(result.data[0].color, 'Putih')
+  assert.equal(result.data[0].bodyType, 'MPV')
   assert.deepEqual(result.data[0].images, [
     'https://images.example.test/car.jpg',
     'https://images.example.test/car-side.jpg',
@@ -442,4 +459,140 @@ test('image upload rejects a Cloudinary response URL from another host', async (
     uploadImageFile(file, 'submissions'),
     (error) => error instanceof ApiError && error.code === 'INVALID_RESPONSE',
   )
+})
+
+test('user auth and profile endpoints parse allowlisted user payloads', async () => {
+  const requests = []
+  const userPayload = {
+    id: '15',
+    name: 'Budi',
+    email: 'budi@example.test',
+    phone: '081234567890',
+    location: 'Semarang',
+    passwordHash: 'must-be-stripped',
+  }
+
+  globalThis.fetch = async (input, options) => {
+    const request = input instanceof Request ? input : new Request(input, options)
+    requests.push({ url: request.url, method: request.method })
+    if (request.url.endsWith('/auth/logout')) return new Response(null, { status: 204 })
+    return new Response(JSON.stringify({
+      success: true,
+      data: { user: userPayload },
+    }), { status: 200 })
+  }
+
+  const registered = await registerUser({ email: 'budi@example.test', password: 'password123' })
+  const loggedIn = await loginUser({ email: 'budi@example.test', password: 'password123' })
+  const session = await getUserSession()
+  const updated = await updateMyProfile({
+    name: 'Budi',
+    phone: '081234567890',
+    location: 'Semarang',
+    newPassword: 'newpassword123',
+  })
+  await logoutUser()
+
+  for (const res of [registered, loggedIn, session, updated]) {
+    assert.deepEqual(res.user, {
+      id: '15',
+      name: 'Budi',
+      email: 'budi@example.test',
+      phone: '081234567890',
+      location: 'Semarang',
+    })
+  }
+  assert.deepEqual(requests.map((r) => `${r.method} ${r.url}`), [
+    'POST http://localhost:5000/api/auth/register',
+    'POST http://localhost:5000/api/auth/login',
+    'GET http://localhost:5000/api/auth/session',
+    'PATCH http://localhost:5000/api/me',
+    'POST http://localhost:5000/api/auth/logout',
+  ])
+})
+
+test('getMyListings requests user-owned listings with status and pagination', async () => {
+  let requestUrl
+  globalThis.fetch = async (url) => {
+    requestUrl = url instanceof Request ? url.url : url
+    return new Response(JSON.stringify({
+      success: true,
+      data: [{
+        kind: 'submission',
+        id: '7',
+        carId: null,
+        submissionId: '7',
+        status: 'pending',
+        brand: 'Honda',
+        model: 'HR-V',
+        year: 2022,
+        transmission: 'CVT',
+        fuelType: 'Bensin',
+        color: 'Putih',
+        bodyType: 'SUV',
+        mileage: 12000,
+        price: '310000000',
+        imageUrl: 'https://images.example.test/hrv.jpg',
+        images: ['https://images.example.test/hrv.jpg'],
+        sellerName: 'Budi',
+        sellerPhone: '081234567890',
+        location: 'Semarang',
+        description: null,
+        reviewNote: null,
+        reviewedAt: null,
+        createdAt: '2026-11-26T00:00:00.000Z',
+      }],
+      pagination: { page: 1, pageSize: 10, totalItems: 1, totalPages: 1 },
+    }), { status: 200 })
+  }
+
+  const result = await getMyListings({ status: 'pending', page: 1, pageSize: 10 })
+
+  assert.equal(requestUrl, 'http://localhost:5000/api/me/listings?status=pending&page=1&pageSize=10')
+  assert.equal(result.data[0].kind, 'submission')
+  assert.equal(result.data[0].bodyType, 'SUV')
+  assert.equal(result.data[0].color, 'Putih')
+})
+
+test('admin customer CRUD endpoints manage allowlisted user accounts', async () => {
+  const requests = []
+  const customer = {
+    id: '21',
+    name: 'Siti',
+    email: 'siti@example.test',
+    phone: '081234567890',
+    location: 'Bandung',
+    isActive: true,
+    createdAt: '2026-11-26T00:00:00.000Z',
+    passwordHash: 'must-be-stripped',
+  }
+
+  globalThis.fetch = async (input, options) => {
+    const request = input instanceof Request ? input : new Request(input, options)
+    requests.push(`${request.method} ${request.url}`)
+    if (request.method === 'DELETE') return new Response(null, { status: 204 })
+    if (request.method === 'GET') {
+      return new Response(JSON.stringify({
+        success: true,
+        data: [customer],
+        pagination: { page: 1, pageSize: 10, totalItems: 1, totalPages: 1 },
+      }), { status: 200 })
+    }
+    return new Response(JSON.stringify({ success: true, data: customer }), { status: 200 })
+  }
+
+  const list = await getAdminCustomers({ search: 'siti', status: 'active', page: 1, pageSize: 10 })
+  const created = await createAdminCustomer({ name: 'Siti', email: 'siti@example.test', phone: '081234567890', password: 'password123' })
+  const updated = await updateAdminCustomer('21', { name: 'Siti', email: 'siti@example.test', phone: '081234567890', isActive: false })
+  await deleteAdminCustomer('21')
+
+  assert.equal(list.data[0].passwordHash, undefined)
+  assert.equal(created.isActive, true)
+  assert.equal(updated.id, '21')
+  assert.deepEqual(requests, [
+    'GET http://localhost:5000/api/admin/customers?search=siti&status=active&page=1&pageSize=10',
+    'POST http://localhost:5000/api/admin/customers',
+    'PUT http://localhost:5000/api/admin/customers/21',
+    'DELETE http://localhost:5000/api/admin/customers/21',
+  ])
 })

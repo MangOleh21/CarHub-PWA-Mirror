@@ -34,6 +34,17 @@ test('offline catalog exposes local brands and sample details by id', () => {
   assert.equal(getOfflineCar('not-a-sample'), null)
 })
 
+test('offline catalog supports bodyType multi-select, color, and fuelType filters', () => {
+  const result = getOfflineCars({
+    bodyType: ['SUV', 'MPV'],
+    fuelType: 'Diesel',
+    color: 'Hitam',
+  })
+
+  assert.equal(result.data.length, 1)
+  assert.equal(result.data[0].id, 'offline-mitsubishi-pajero')
+})
+
 test('offline fallback is offered for connection and server failures, not validation errors', () => {
   assert.equal(canUseOfflineFallback({ status: 0 }), true)
   assert.equal(canUseOfflineFallback({ status: 503 }), true)

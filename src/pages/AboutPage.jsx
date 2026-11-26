@@ -1,8 +1,8 @@
-import { ExternalLink, Smartphone } from 'lucide-react'
-import ThemeToggle from '../components/ThemeToggle.jsx'
+import { ArrowLeft, ExternalLink, Smartphone } from 'lucide-react'
+import AppLink from '../components/AppLink.jsx'
 import { profile } from '../data/profile.js'
 
-export default function AboutPage() {
+export default function AboutPage({ navigate }) {
   const initials = profile.name
     .split(/\s+/)
     .slice(0, 3)
@@ -12,10 +12,14 @@ export default function AboutPage() {
 
   return (
     <main className="page-content about-page">
+      <AppLink className="back-link" to="/profile" navigate={navigate}>
+        <ArrowLeft size={17} aria-hidden="true" /> Kembali ke Profil
+      </AppLink>
+
       <section className="page-intro">
         <p className="eyebrow">TENTANG CARHUB</p>
         <h1>Pasar mobil bekas,<br /><em>lebih terbuka.</em></h1>
-        <p>CarHub membantu pembeli menemukan mobil terkurasi dan menghubungi penjual secara langsung, tanpa akun publik dan tanpa perantara transaksi.</p>
+        <p>Pembeli dapat menjelajahi katalog, menyimpan favorit, dan menghubungi penjual via WhatsApp tanpa akun. Penjual dapat masuk untuk mengajukan mobil dan memantau listing miliknya.</p>
       </section>
 
       <section className="profile-card" aria-labelledby="profile-heading">
@@ -41,7 +45,7 @@ export default function AboutPage() {
       <section className="about-section">
         <p className="eyebrow">DIBANGUN UNTUK</p>
         <h2>Pilihan yang terasa jelas.</h2>
-        <p>Setiap listing menampilkan harga, tahun, jarak tempuh, transmisi, dan lokasi. Simpan mobil favorit di perangkat Anda, lalu lanjutkan percakapan langsung dengan penjual melalui WhatsApp.</p>
+        <p>Setiap listing menampilkan harga, tahun, jarak tempuh, transmisi, tipe bodi, warna, dan lokasi. Simpan mobil favorit di perangkat Anda, lalu lanjutkan percakapan langsung dengan penjual melalui WhatsApp.</p>
       </section>
 
       <section className="about-section" aria-labelledby="tech-stack-title">
@@ -53,12 +57,6 @@ export default function AboutPage() {
           <div><dt>Database</dt><dd>Neon · PostgreSQL</dd></div>
           <div><dt>Platform</dt><dd>Progressive Web App</dd></div>
         </dl>
-      </section>
-
-      <section className="about-section theme-settings" aria-labelledby="theme-settings-title">
-        <p className="eyebrow">PREFERENSI</p>
-        <h2 id="theme-settings-title">Pengaturan tampilan</h2>
-        <ThemeToggle />
       </section>
 
       <section className="install-guide">

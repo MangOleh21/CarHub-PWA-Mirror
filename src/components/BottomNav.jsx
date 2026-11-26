@@ -6,7 +6,7 @@ const items = [
   { path: '/catalog', label: 'Katalog', Icon: CarFront },
   { path: '/sell', label: 'Jual', Icon: Plus, prominent: true },
   { path: '/wishlist', label: 'Favorit', Icon: Heart },
-  { path: '/about', label: 'Profil', Icon: UserRound },
+  { path: '/profile', label: 'Profil', Icon: UserRound },
 ]
 
 export default function BottomNav({ pathname, navigate, favoriteCount }) {
@@ -14,6 +14,12 @@ export default function BottomNav({ pathname, navigate, favoriteCount }) {
     <nav className="bottom-nav" aria-label="Navigasi utama">
       {items.map(({ path, label, Icon, prominent }) => {
         const active = pathname === path
+          || (path === '/profile' && (
+            pathname === '/my-listings'
+            || pathname === '/about'
+            || pathname === '/login'
+            || pathname === '/register'
+          ))
         return (
           <AppLink
             className={`bottom-nav-item${prominent ? ' bottom-nav-sell' : ''}${active ? ' is-active' : ''}`}

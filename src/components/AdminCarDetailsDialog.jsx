@@ -62,6 +62,8 @@ export default function AdminCarDetailsDialog({ car, archived, onClose }) {
           <div><dt>Jarak tempuh</dt><dd>{formatMileage(car.mileage)}</dd></div>
           <div><dt>Transmisi</dt><dd>{car.transmission}</dd></div>
           <div><dt>Bahan bakar</dt><dd>{car.fuelType || 'Belum tersedia'}</dd></div>
+          <div><dt>Tipe mobil</dt><dd>{car.bodyType || '-'}</dd></div>
+          <div><dt>Warna</dt><dd>{car.color || '-'}</dd></div>
           <div><dt>Lokasi</dt><dd>{car.location || 'Belum tersedia'}</dd></div>
           <div><dt>Penjual</dt><dd>{car.sellerName}</dd></div>
           <div><dt>WhatsApp</dt><dd>{car.sellerPhone}</dd></div>

@@ -26,6 +26,8 @@ export default function CarCard({ car, navigate, isSaved, onToggleSaved }) {
           <h2>{car.brand} {car.model}</h2>
           <p className="car-meta">
             <span>{formatMileage(car.mileage)}</span>
+            {car.bodyType && <span>{car.bodyType}</span>}
+            {car.color && <span>{car.color}</span>}
             <span><MapPin size={14} aria-hidden="true" /> {car.location || 'Lokasi belum tersedia'}</span>
           </p>
           <p className="car-price">{formatPrice(car.price)}</p>

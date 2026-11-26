@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
-import { ArrowUpRight, CarFront, ClipboardList, LogOut, RefreshCw, UsersRound } from 'lucide-react'
+import { ArrowUpRight, CarFront, ClipboardList, LogOut, RefreshCw, UserRound, UsersRound } from 'lucide-react'
 import AppLink from '../../components/AppLink.jsx'
 import BrandMark from '../../components/BrandMark.jsx'
 import { ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import { getAdminDashboardSummary, getAdminSession, logoutAdmin } from '../../services/api.js'
 import AdminCarsPanel from './AdminCarsPanel.jsx'
+import AdminCustomersPanel from './AdminCustomersPanel.jsx'
 import AdminSubmissionsPanel from './AdminSubmissionsPanel.jsx'
 import AdminAccountsPanel from './AdminAccountsPanel.jsx'
 
 const tabs = [
   { id: 'cars', label: 'Katalog', Icon: CarFront },
   { id: 'submissions', label: 'Pengajuan', Icon: ClipboardList },
+  { id: 'customers', label: 'Pengguna', Icon: UserRound },
   { id: 'admins', label: 'Akun admin', Icon: UsersRound, ownerOnly: true },
 ]
 
@@ -151,6 +153,9 @@ export default function AdminDashboard({ navigate }) {
         )}
         {activeTab === 'submissions' && (
           <AdminSubmissionsPanel onDataChange={() => setSummaryRevision((value) => value + 1)} />
+        )}
+        {activeTab === 'customers' && (
+          <AdminCustomersPanel />
         )}
         {activeTab === 'admins' && session.role === 'owner' && (
           <AdminAccountsPanel />

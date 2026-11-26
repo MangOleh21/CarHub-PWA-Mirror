@@ -1,17 +1,59 @@
-import { ArrowDownToLine } from 'lucide-react'
+import { ArrowDownToLine, LogIn } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import AppLink from './components/AppLink.jsx'
 import BrandMark from './components/BrandMark.jsx'
 import BottomNav from './components/BottomNav.jsx'
+import { useAuth } from './contexts/useAuth.js'
 import AdminPortal from './pages/AdminPage.jsx'
-import ProfilePage from './pages/AboutPage.jsx'
+import AboutPage from './pages/AboutPage.jsx'
+import AuthPage from './pages/AuthPage.jsx'
 import CatalogPage from './pages/CatalogPage.jsx'
 import CarDetailPage from './pages/CarDetailPage.jsx'
 import LandingPage from './pages/LandingPage.jsx'
+import MyListingsPage from './pages/MyListingsPage.jsx'
+import ProfilePage from './pages/ProfilePage.jsx'
 import SellFormPage from './pages/SellPage.jsx'
 import WishlistPage from './pages/WishlistPage.jsx'
 import useWishlist from './hooks/useWishlist.js'
 import './App.css'
+
+function HeaderAccountIndicator({ navigate, pathname }) {
+  const { user, status } = useAuth()
+
+  if (status === 'loading') return null
+
+  if (!user) {
+    return (
+      <AppLink
+        className={`header-login-link${pathname === '/login' || pathname === '/register' ? ' is-active' : ''}`}
+        to="/login"
+        navigate={navigate}
+      >
+        <LogIn size={15} aria-hidden="true" />
+        <span>Masuk</span>
+      </AppLink>
+    )
+  }
+
+  const parts = user.name.trim().split(/\s+/).filter(Boolean)
+  const initials = parts.slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'U'
+  const shortName = parts[0] || user.name
+
+  return (
+    <AppLink
+      className={`header-account-chip${pathname === '/profile' || pathname === '/my-listings' ? ' is-active' : ''}`}
+      to="/profile"
+      navigate={navigate}
+      aria-label={`Akun aktif: ${user.name}, buka halaman Profil`}
+    >
+      <span className="header-account-avatar" aria-hidden="true">
+        {initials}
+        <span className="header-account-dot" />
+      </span>
+      <span className="header-account-name">{shortName}</span>
+    </AppLink>
+  )
+}
 
 function InstallPrompt() {
   const [installEvent, setInstallEvent] = useState(null)
@@ -114,9 +156,23 @@ export default function App() {
   } else if (pathname === '/wishlist') {
     page = <WishlistPage navigate={navigate} wishlistIds={wishlistIds} toggleWishlist={toggleWishlist} />
   } else if (pathname === '/sell') {
-    page = <SellFormPage />
+    page = <SellFormPage navigate={navigate} />
+  } else if (pathname === '/profile') {
+    page = <ProfilePage navigate={navigate} />
+  } else if (pathname === '/my-listings') {
+    page = (
+      <MyListingsPage
+        navigate={navigate}
+        wishlistIds={wishlistIds}
+        toggleWishlist={toggleWishlist}
+      />
+    )
   } else if (pathname === '/about') {
-    page = <ProfilePage />
+    page = <AboutPage navigate={navigate} />
+  } else if (pathname === '/login') {
+    page = <AuthPage mode="login" navigate={navigate} search={search} />
+  } else if (pathname === '/register') {
+    page = <AuthPage mode="register" navigate={navigate} search={search} />
   } else if (detailMatch) {
     page = (
       <CarDetailPage
@@ -143,6 +199,7 @@ export default function App() {
         </AppLink>
         <div className="header-actions">
           <InstallPrompt />
+          <HeaderAccountIndicator navigate={navigate} pathname={pathname} />
         </div>
       </header>
       {page}

@@ -10,21 +10,32 @@ import {
   OfflineDataNotice,
   OfflineFallbackPrompt,
 } from '../components/Feedback.jsx'
+import {
+  BODY_TYPE_OPTIONS,
+  COLOR_OPTIONS,
+  FUEL_TYPE_OPTIONS,
+  TRANSMISSION_OPTIONS,
+} from '../lib/car-options.js'
 import { canUseOfflineFallback, getOfflineCarBrands, getOfflineCars } from '../services/offline-cars.js'
 
+const EMPTY_FILTERS = {
+  search: '',
+  brand: '',
+  bodyType: [],
+  color: '',
+  fuelType: '',
+  transmission: '',
+  minPrice: '',
+  maxPrice: '',
+  minYear: '',
+  maxYear: '',
+  sortBy: 'createdAt',
+  sortOrder: 'desc',
+}
+
 export default function CatalogPage({ navigate, search: locationSearch, wishlistIds, toggleWishlist }) {
-  const [draft, setDraft] = useState({
-    search: '',
-    brand: '',
-    transmission: '',
-    minPrice: '',
-    maxPrice: '',
-    minYear: '',
-    maxYear: '',
-    sortBy: 'createdAt',
-    sortOrder: 'desc',
-  })
-  const [filters, setFilters] = useState({ ...draft })
+  const [draft, setDraft] = useState(EMPTY_FILTERS)
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [requestKey, setRequestKey] = useState(0)
@@ -70,12 +81,24 @@ export default function CatalogPage({ navigate, search: locationSearch, wishlist
     : brandsResponse.key === brandsRequestKey ? brandsResponse.error : null
   const activeFilterCount = [
     filters.brand,
+    filters.bodyType.length > 0,
+    filters.color,
+    filters.fuelType,
     filters.transmission,
     filters.minPrice,
     filters.maxPrice,
     filters.minYear,
     filters.maxYear,
   ].filter(Boolean).length + Number(filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc')
+
+  function toggleBodyType(type) {
+    setDraft((current) => ({
+      ...current,
+      bodyType: current.bodyType.includes(type)
+        ? current.bodyType.filter((item) => item !== type)
+        : [...current.bodyType, type],
+    }))
+  }
 
   function applyFilters(event) {
     event.preventDefault()
@@ -84,30 +107,21 @@ export default function CatalogPage({ navigate, search: locationSearch, wishlist
       ...draft,
       search: draft.search.trim(),
       brand: draft.brand.trim(),
+      bodyType: [...draft.bodyType],
     })
     setRequestKey((key) => key + 1)
   }
 
   function clearFilters() {
-    const emptyFilters = {
-      search: '',
-      brand: '',
-      transmission: '',
-      minPrice: '',
-      maxPrice: '',
-      minYear: '',
-      maxYear: '',
-      sortBy: 'createdAt',
-      sortOrder: 'desc',
-    }
-    setDraft(emptyFilters)
-    setFilters(emptyFilters)
+    setDraft(EMPTY_FILTERS)
+    setFilters(EMPTY_FILTERS)
     setPage(1)
     setRequestKey((key) => key + 1)
   }
 
   const hasFilters = Boolean(
-    filters.search || filters.brand || filters.transmission || filters.minPrice || filters.maxPrice
+    filters.search || filters.brand || filters.bodyType.length > 0 || filters.color || filters.fuelType
+    || filters.transmission || filters.minPrice || filters.maxPrice
     || filters.minYear || filters.maxYear || filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc',
   )
 
@@ -207,6 +221,50 @@ export default function CatalogPage({ navigate, search: locationSearch, wishlist
               </div>
             )}
           </fieldset>
+          <fieldset className="catalog-brand-filter">
+            <legend>Tipe mobil</legend>
+            <div className="catalog-brand-options" role="group" aria-label="Pilih satu atau beberapa tipe mobil">
+              <button
+                className="catalog-brand-option"
+                type="button"
+                aria-pressed={draft.bodyType.length === 0}
+                onClick={() => setDraft((current) => ({ ...current, bodyType: [] }))}
+              >Semua tipe</button>
+              {BODY_TYPE_OPTIONS.map((bodyType) => (
+                <button
+                  className="catalog-brand-option"
+                  key={bodyType}
+                  type="button"
+                  aria-pressed={draft.bodyType.includes(bodyType)}
+                  onClick={() => toggleBodyType(bodyType)}
+                >{bodyType}</button>
+              ))}
+            </div>
+          </fieldset>
+          <label className="catalog-filter-field">
+            <span>Warna</span>
+            <select
+              value={draft.color}
+              onChange={(event) => setDraft((current) => ({ ...current, color: event.target.value }))}
+            >
+              <option value="">Semua warna</option>
+              {COLOR_OPTIONS.map((color) => (
+                <option key={color} value={color}>{color}</option>
+              ))}
+            </select>
+          </label>
+          <label className="catalog-filter-field">
+            <span>Bahan bakar</span>
+            <select
+              value={draft.fuelType}
+              onChange={(event) => setDraft((current) => ({ ...current, fuelType: event.target.value }))}
+            >
+              <option value="">Semua</option>
+              {FUEL_TYPE_OPTIONS.map((fuelType) => (
+                <option key={fuelType} value={fuelType}>{fuelType}</option>
+              ))}
+            </select>
+          </label>
           <label className="catalog-filter-field">
             <span>Transmisi</span>
             <select
@@ -214,11 +272,9 @@ export default function CatalogPage({ navigate, search: locationSearch, wishlist
               onChange={(event) => setDraft((current) => ({ ...current, transmission: event.target.value }))}
             >
               <option value="">Semua</option>
-              <option value="Manual">Manual</option>
-              <option value="Automatic">Automatic</option>
-              <option value="CVT">CVT</option>
-              <option value="DCT">DCT</option>
-              <option value="AMT">AMT</option>
+              {TRANSMISSION_OPTIONS.map((transmission) => (
+                <option key={transmission} value={transmission}>{transmission}</option>
+              ))}
             </select>
           </label>
           <label className="catalog-filter-field">

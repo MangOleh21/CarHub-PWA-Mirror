@@ -4,10 +4,14 @@ import AppLink from '../../components/AppLink.jsx'
 import { ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageUploader from '../../components/ImageUploader.jsx'
 import { useImageFileSelection } from '../../hooks/useImageFileSelection.js'
+import {
+  BODY_TYPE_OPTIONS,
+  COLOR_OPTIONS,
+  FUEL_TYPE_OPTIONS,
+  TRANSMISSION_OPTIONS,
+} from '../../lib/car-options.js'
 import { maxImageCount } from '../../lib/image-upload.js'
 import { createCar, getAdminCar, getAdminSession, updateCar, uploadImageFiles } from '../../services/api.js'
-
-const FUEL_TYPES = ['Bensin', 'Diesel', 'Hybrid', 'Listrik']
 
 const EMPTY_CAR = {
   brand: '',
@@ -15,6 +19,8 @@ const EMPTY_CAR = {
   year: '',
   transmission: 'Manual',
   fuelType: 'Bensin',
+  color: '',
+  bodyType: '',
   mileage: '',
   price: '',
   images: [],
@@ -29,6 +35,8 @@ function carToForm(car) {
   return {
     ...car,
     fuelType: car.fuelType || 'Bensin',
+    color: car.color || '',
+    bodyType: car.bodyType || '',
     imageUrl: '',
     year: String(car.year),
     mileage: String(car.mileage),
@@ -39,7 +47,7 @@ function carToForm(car) {
 
 function validateCar(form, selectedImageCount, hasImageError) {
   const errors = {}
-  for (const field of ['brand', 'model', 'year', 'mileage', 'price', 'sellerName', 'sellerPhone', 'location']) {
+  for (const field of ['brand', 'model', 'year', 'color', 'bodyType', 'mileage', 'price', 'sellerName', 'sellerPhone', 'location']) {
     if (!String(form[field]).trim()) errors[field] = 'Bagian ini wajib diisi.'
   }
   const imageCount = form.images.length + selectedImageCount + (form.imageUrl.trim() ? 1 : 0)
@@ -162,6 +170,8 @@ export default function AdminCarEditor({ carId, navigate }) {
         year: Number(form.year),
         transmission: form.transmission,
         fuelType: form.fuelType.trim() || 'Bensin',
+        color: form.color,
+        bodyType: form.bodyType,
         mileage: Number(form.mileage),
         price: Number(form.price),
         imageUrl: images[0],
@@ -216,19 +226,45 @@ export default function AdminCarEditor({ carId, navigate }) {
               <label className="form-field" htmlFor="car-transmission">
                 <span>Transmisi</span>
                 <select id="car-transmission" name="transmission" value={form.transmission} onChange={updateField}>
-                  <option>Manual</option>
-                  <option>Automatic</option>
-                  <option>CVT</option>
-                  <option>DCT</option>
-                  <option>AMT</option>
+                  {TRANSMISSION_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
                 </select>
               </label>
               <label className="form-field" htmlFor="car-fuel-type">
                 <span>Bahan bakar</span>
                 <select id="car-fuel-type" name="fuelType" value={selectedFuelType} onChange={updateField}>
-                  {FUEL_TYPES.map((fuelType) => <option key={fuelType}>{fuelType}</option>)}
-                  {!FUEL_TYPES.includes(selectedFuelType) && <option>{selectedFuelType}</option>}
+                  {FUEL_TYPE_OPTIONS.map((fuelType) => <option key={fuelType} value={fuelType}>{fuelType}</option>)}
+                  {!FUEL_TYPE_OPTIONS.includes(selectedFuelType) && <option value={selectedFuelType}>{selectedFuelType}</option>}
                 </select>
+              </label>
+              <label className="form-field" htmlFor="car-body-type">
+                <span>Tipe mobil</span>
+                <select
+                  id="car-body-type"
+                  name="bodyType"
+                  value={form.bodyType}
+                  onChange={updateField}
+                  aria-invalid={Boolean(errors.bodyType)}
+                  aria-describedby={errors.bodyType ? 'car-bodyType-error' : undefined}
+                >
+                  <option value="">Pilih tipe mobil</option>
+                  {BODY_TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                {errors.bodyType && <small className="field-error" id="car-bodyType-error">{errors.bodyType}</small>}
+              </label>
+              <label className="form-field" htmlFor="car-color">
+                <span>Warna mobil</span>
+                <select
+                  id="car-color"
+                  name="color"
+                  value={form.color}
+                  onChange={updateField}
+                  aria-invalid={Boolean(errors.color)}
+                  aria-describedby={errors.color ? 'car-color-error' : undefined}
+                >
+                  <option value="">Pilih warna</option>
+                  {COLOR_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                </select>
+                {errors.color && <small className="field-error" id="car-color-error">{errors.color}</small>}
               </label>
               <EditorField name="mileage" label="Jarak tempuh (km)" type="number" min="0" max="2147483647" value={form.mileage} onChange={updateField} error={errors.mileage} />
               <EditorField name="price" label="Harga (Rp)" type="number" min="1" step="1" value={form.price} onChange={updateField} error={errors.price} />

@@ -59,12 +59,16 @@ function parseCar(value) {
     : typeof value?.imageUrl === 'string' ? [value.imageUrl] : []
   const imageUrl = typeof value?.imageUrl === 'string' ? value.imageUrl : images[0]
   const validImages = images.length > 0 && images.every(isHttpsUrl)
+  const validColor = value?.color === undefined || value.color === null || typeof value.color === 'string'
+  const validBodyType = value?.bodyType === undefined || value.bodyType === null || typeof value.bodyType === 'string'
   const isValid = value
     && typeof value.id === 'string'
     && typeof value.brand === 'string'
     && typeof value.model === 'string'
     && Number.isInteger(value.year)
     && typeof value.transmission === 'string'
+    && validColor
+    && validBodyType
     && Number.isInteger(value.mileage)
     && typeof value.price === 'string'
     && /^\d+$/.test(value.price)
@@ -79,7 +83,13 @@ function parseCar(value) {
   if (!isValid) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data mobil dari server tidak sesuai kontrak API.')
   }
-  return { ...value, imageUrl, images }
+  return {
+    ...value,
+    color: value.color ?? null,
+    bodyType: value.bodyType ?? null,
+    imageUrl,
+    images,
+  }
 }
 
 function parseSubmission(value) {
@@ -90,6 +100,8 @@ function parseSubmission(value) {
   const validImageUrl = value?.imageUrl === undefined
     || value.imageUrl === null
     || isHttpsUrl(value.imageUrl)
+  const validColor = value?.color === undefined || value.color === null || typeof value.color === 'string'
+  const validBodyType = value?.bodyType === undefined || value.bodyType === null || typeof value.bodyType === 'string'
   const isValid = value
     && typeof value.id === 'string'
     && typeof value.brand === 'string'
@@ -97,6 +109,8 @@ function parseSubmission(value) {
     && Number.isInteger(value.year)
     && typeof value.sellerName === 'string'
     && typeof value.sellerPhone === 'string'
+    && validColor
+    && validBodyType
     && Number.isInteger(value.mileage)
     && typeof value.expectedPrice === 'string'
     && /^\d+$/.test(value.expectedPrice)
@@ -110,7 +124,13 @@ function parseSubmission(value) {
   if (!isValid) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data pengajuan dari server tidak sesuai kontrak API.')
   }
-  return { ...value, imageUrl: value.imageUrl ?? images[0] ?? null, images }
+  return {
+    ...value,
+    color: value.color ?? null,
+    bodyType: value.bodyType ?? null,
+    imageUrl: value.imageUrl ?? images[0] ?? null,
+    images,
+  }
 }
 
 function isHttpsUrl(value) {
@@ -132,6 +152,79 @@ function parseAdmin(value) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data sesi admin dari server tidak sesuai kontrak API.')
   }
   return { id: value.id, email: value.email, role: value.role }
+}
+
+function parseUser(value) {
+  if (!value
+    || typeof value.id !== 'string'
+    || typeof value.name !== 'string'
+    || typeof value.email !== 'string'
+    || typeof value.phone !== 'string'
+    || (value.location !== undefined && value.location !== null && typeof value.location !== 'string')
+    || (value.createdAt !== undefined && !isValidDate(value.createdAt))) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Data akun pengguna dari server tidak sesuai kontrak API.')
+  }
+  return {
+    id: value.id,
+    name: value.name,
+    email: value.email,
+    phone: value.phone,
+    location: value.location ?? null,
+    ...(value.createdAt ? { createdAt: value.createdAt } : {}),
+  }
+}
+
+function parseManagedCustomer(value) {
+  const user = parseUser(value)
+  if (typeof value.isActive !== 'boolean') {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Data pengguna dari server tidak sesuai kontrak API.')
+  }
+  return { ...user, isActive: value.isActive }
+}
+
+function parseUserListing(value) {
+  const images = Array.isArray(value?.images) && value.images.length > 0
+    ? value.images
+    : typeof value?.imageUrl === 'string' ? [value.imageUrl] : []
+  const validImageUrl = value?.imageUrl === undefined
+    || value.imageUrl === null
+    || isHttpsUrl(value.imageUrl)
+  const validColor = value?.color === undefined || value.color === null || typeof value.color === 'string'
+  const validBodyType = value?.bodyType === undefined || value.bodyType === null || typeof value.bodyType === 'string'
+  const isValid = value
+    && ['car', 'submission'].includes(value.kind)
+    && typeof value.id === 'string'
+    && ['active', 'pending', 'rejected'].includes(value.status)
+    && typeof value.brand === 'string'
+    && typeof value.model === 'string'
+    && Number.isInteger(value.year)
+    && typeof value.transmission === 'string'
+    && validColor
+    && validBodyType
+    && Number.isInteger(value.mileage)
+    && typeof value.price === 'string'
+    && /^\d+$/.test(value.price)
+    && validImageUrl
+    && images.every(isHttpsUrl)
+    && typeof value.sellerName === 'string'
+    && typeof value.sellerPhone === 'string'
+    && (typeof value.location === 'string' || value.location === null)
+    && (typeof value.description === 'string' || value.description === null)
+    && (value.reviewNote === undefined || value.reviewNote === null || typeof value.reviewNote === 'string')
+    && (value.reviewedAt === undefined || value.reviewedAt === null || isValidDate(value.reviewedAt))
+
+  if (!isValid) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Data listing pengguna dari server tidak sesuai kontrak API.')
+  }
+  return {
+    ...value,
+    color: value.color ?? null,
+    bodyType: value.bodyType ?? null,
+    imageUrl: value.imageUrl ?? images[0] ?? null,
+    images,
+    reviewNote: value.reviewNote ?? null,
+    reviewedAt: value.reviewedAt ?? null,
+  }
 }
 
 function parseManagedAdmin(value) {
@@ -196,6 +289,9 @@ function listQuery({
   status,
   archiveStatus,
   transmission,
+  fuelType,
+  color,
+  bodyType,
   minPrice,
   maxPrice,
   minYear,
@@ -212,6 +308,8 @@ function listQuery({
   if (archiveStatus) params.set('archiveStatus', archiveStatus)
   for (const [key, value] of Object.entries({
     transmission,
+    fuelType,
+    color,
     minPrice,
     maxPrice,
     minYear,
@@ -221,6 +319,14 @@ function listQuery({
   })) {
     if (value !== undefined && value !== null && value !== '') {
       params.set(key, String(value))
+    }
+  }
+  const bodyTypes = Array.isArray(bodyType)
+    ? bodyType
+    : bodyType ? [bodyType] : []
+  for (const value of bodyTypes) {
+    if (typeof value === 'string' && value.trim()) {
+      params.append('bodyType', value.trim())
     }
   }
   params.set('page', String(page))
@@ -258,6 +364,39 @@ export async function createSubmission(input) {
   return parseSubmissionReceipt(
     readData(await request('/submissions', { method: 'POST', body: input })),
   )
+}
+
+export async function registerUser(input) {
+  const data = readData(await request('/auth/register', { method: 'POST', body: input }))
+  return { user: parseUser(data?.user) }
+}
+
+export async function loginUser(input) {
+  const data = readData(await request('/auth/login', { method: 'POST', body: input }))
+  return { user: parseUser(data?.user) }
+}
+
+export async function getUserSession() {
+  const data = readData(await request('/auth/session'))
+  return { user: parseUser(data?.user) }
+}
+
+export function logoutUser() {
+  return request('/auth/logout', { method: 'POST', body: {} })
+}
+
+export async function getMyProfile() {
+  const data = readData(await request('/me'))
+  return { user: parseUser(data?.user) }
+}
+
+export async function updateMyProfile(input) {
+  const data = readData(await request('/me', { method: 'PATCH', body: input }))
+  return { user: parseUser(data?.user) }
+}
+
+export function getMyListings(options = {}) {
+  return list('/me/listings', { ...options, status: options.status ?? 'all' }, parseUserListing)
 }
 
 export async function loginAdmin(input) {
@@ -465,4 +604,24 @@ export async function deactivateAdminUser(id) {
     body: {},
   }))
   return parseManagedAdmin(data?.admin)
+}
+
+export function getAdminCustomers(options = {}) {
+  return list('/admin/customers', { ...options, status: options.status ?? 'all' }, parseManagedCustomer)
+}
+
+export async function createAdminCustomer(input) {
+  return parseManagedCustomer(
+    readData(await request('/admin/customers', { method: 'POST', body: input })),
+  )
+}
+
+export async function updateAdminCustomer(id, input) {
+  return parseManagedCustomer(
+    readData(await request(`/admin/customers/${encodeURIComponent(id)}`, { method: 'PUT', body: input })),
+  )
+}
+
+export function deleteAdminCustomer(id) {
+  return request(`/admin/customers/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }

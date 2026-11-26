@@ -6,6 +6,8 @@ const offlineCars = [
     year: 2021,
     transmission: 'CVT',
     fuelType: 'Bensin',
+    color: 'Kuning',
+    bodyType: 'Hatchback',
     mileage: 22_000,
     price: '185000000',
     imageUrl: '/offline-cars/honda_brio_rs.jpg',
@@ -24,6 +26,8 @@ const offlineCars = [
     year: 2020,
     transmission: 'Automatic',
     fuelType: 'Diesel',
+    color: 'Silver',
+    bodyType: 'MPV',
     mileage: 58_000,
     price: '325000000',
     imageUrl: '/offline-cars/innova_reborn.jpg',
@@ -42,6 +46,8 @@ const offlineCars = [
     year: 2019,
     transmission: 'Automatic',
     fuelType: 'Diesel',
+    color: 'Hitam',
+    bodyType: 'SUV',
     mileage: 72_000,
     price: '410000000',
     imageUrl: '/offline-cars/mitsubishi_pajerosport.jpeg',
@@ -60,6 +66,8 @@ const offlineCars = [
     year: 2025,
     transmission: 'CVT',
     fuelType: 'Bensin',
+    color: 'Putih',
+    bodyType: 'SUV',
     mileage: 1_500,
     price: '425000000',
     imageUrl: '/offline-cars/mitsubishi-destinator-99110.webp',
@@ -81,6 +89,9 @@ export function getOfflineCars({
   search,
   brand,
   transmission,
+  fuelType,
+  color,
+  bodyType,
   minPrice,
   maxPrice,
   minYear,
@@ -92,10 +103,16 @@ export function getOfflineCars({
 } = {}) {
   const searchTerm = search?.trim().toLocaleLowerCase('id-ID')
   const brandTerm = brand?.trim().toLocaleLowerCase('id-ID')
+  const bodyTypes = Array.isArray(bodyType)
+    ? bodyType.filter(Boolean)
+    : bodyType ? [bodyType] : []
   let matches = offlineCars.filter((car) => (
     (!searchTerm || `${car.brand} ${car.model}`.toLocaleLowerCase('id-ID').includes(searchTerm))
     && (!brandTerm || car.brand.toLocaleLowerCase('id-ID') === brandTerm)
     && (!transmission || car.transmission === transmission)
+    && (!fuelType || car.fuelType === fuelType)
+    && (!color || car.color === color)
+    && (bodyTypes.length === 0 || bodyTypes.includes(car.bodyType))
     && (!hasValue(minPrice) || BigInt(car.price) >= BigInt(minPrice))
     && (!hasValue(maxPrice) || BigInt(car.price) <= BigInt(maxPrice))
     && (!hasValue(minYear) || car.year >= Number(minYear))

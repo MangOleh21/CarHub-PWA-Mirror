@@ -1,7 +1,16 @@
-import { ArrowRight, Check, CircleAlert } from 'lucide-react'
+import { ArrowRight, Check, CircleAlert, LogIn, UserPlus } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import AppLink from '../components/AppLink.jsx'
+import { LoadingState } from '../components/Feedback.jsx'
 import ImageUploader from '../components/ImageUploader.jsx'
+import { useAuth } from '../contexts/useAuth.js'
 import { useImageFileSelection } from '../hooks/useImageFileSelection.js'
+import {
+  BODY_TYPE_OPTIONS,
+  COLOR_OPTIONS,
+  FUEL_TYPE_OPTIONS,
+  TRANSMISSION_OPTIONS,
+} from '../lib/car-options.js'
 import { maxImageCount } from '../lib/image-upload.js'
 import { createSubmission, uploadImageFiles } from '../services/api.js'
 
@@ -13,6 +22,8 @@ const EMPTY_FORM = {
   year: '',
   transmission: 'Manual',
   fuelType: 'Bensin',
+  color: '',
+  bodyType: '',
   mileage: '',
   expectedPrice: '',
   location: '',
@@ -23,7 +34,18 @@ const EMPTY_FORM = {
 
 function validate(form, selectedImageCount, hasImageError) {
   const errors = {}
-  const required = ['sellerName', 'sellerPhone', 'brand', 'model', 'year', 'mileage', 'expectedPrice', 'location']
+  const required = [
+    'sellerName',
+    'sellerPhone',
+    'brand',
+    'model',
+    'year',
+    'color',
+    'bodyType',
+    'mileage',
+    'expectedPrice',
+    'location',
+  ]
   required.forEach((field) => {
     if (!String(form[field]).trim()) errors[field] = 'Bagian ini wajib diisi.'
   })
@@ -78,8 +100,19 @@ function Field({ name, label, value, onChange, error, ...props }) {
   )
 }
 
-export default function SellPage() {
-  const [form, setForm] = useState(EMPTY_FORM)
+function createInitialForm(user) {
+  return {
+    ...EMPTY_FORM,
+    sellerName: user?.name || '',
+    sellerPhone: user?.phone || '',
+    location: user?.location || '',
+  }
+}
+
+export default function SellPage({ navigate }) {
+  const { user, status: authStatus, refreshSession } = useAuth()
+  const [form, setForm] = useState(() => createInitialForm(user))
+  const [prefilledUserId, setPrefilledUserId] = useState(() => user?.id ?? null)
   const [errors, setErrors] = useState({})
   const [message, setMessage] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -96,9 +129,51 @@ export default function SellPage() {
   const errorSummary = useRef(null)
   const errorCount = Object.keys(errors).length + (imageError ? 1 : 0)
 
+  if (user && prefilledUserId !== user.id) {
+    setPrefilledUserId(user.id)
+    setForm((current) => ({
+      ...current,
+      sellerName: current.sellerName || user.name || '',
+      sellerPhone: current.sellerPhone || user.phone || '',
+      location: current.location || user.location || '',
+    }))
+  }
+
   useEffect(() => {
     if (errorCount) errorSummary.current?.focus()
   }, [errorCount])
+
+  if (authStatus === 'loading') {
+    return (
+      <main className="page-content sell-page">
+        <LoadingState label="Memeriksa sesi akun" />
+      </main>
+    )
+  }
+
+  if (!user) {
+    return (
+      <main className="page-content sell-page">
+        <section className="page-intro">
+          <p className="eyebrow">JUAL MELALUI CARHUB</p>
+          <h1>Mobil Anda,<br /><em>berikutnya.</em></h1>
+          <p>Masuk atau buat akun penjual terlebih dahulu agar Anda dapat mengajukan jual mobil dan memantau statusnya di halaman Profil.</p>
+        </section>
+        <section className="account-gate">
+          <h2>Akun diperlukan untuk menjual mobil</h2>
+          <p>Pembeli tetap dapat menjelajahi katalog, menyimpan favorit, dan menghubungi penjual tanpa akun. Penjual memerlukan akun agar setiap listing terhubung ke profil Anda.</p>
+          <div className="account-actions">
+            <AppLink className="button button-primary" to="/login?next=/sell" navigate={navigate}>
+              <LogIn size={16} aria-hidden="true" /> Masuk
+            </AppLink>
+            <AppLink className="button button-outline" to="/register?next=/sell" navigate={navigate}>
+              <UserPlus size={16} aria-hidden="true" /> Daftar akun
+            </AppLink>
+          </div>
+        </section>
+      </main>
+    )
+  }
 
   function updateField(event) {
     const { name, value } = event.target
@@ -141,11 +216,14 @@ export default function SellPage() {
         description: form.description.trim() || undefined,
       })
       setMessage({ type: 'success', id: result.id })
-      setForm(EMPTY_FORM)
+      setForm(createInitialForm(user))
       clearSelections()
       setErrors({})
       setContactConsent(false)
     } catch (error) {
+      if (error?.status === 401) {
+        await refreshSession()
+      }
       setMessage({ type: 'error', text: error.message })
     } finally {
       setSubmitting(false)
@@ -197,21 +275,44 @@ export default function SellPage() {
             <label className="form-field" htmlFor="submission-transmission">
               <span>Transmisi</span>
               <select id="submission-transmission" name="transmission" value={form.transmission} onChange={updateField}>
-                <option>Manual</option>
-                <option>Automatic</option>
-                <option>CVT</option>
-                <option>DCT</option>
-                <option>AMT</option>
+                {TRANSMISSION_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
             </label>
             <label className="form-field" htmlFor="submission-fuel-type">
               <span>Bahan bakar</span>
               <select id="submission-fuel-type" name="fuelType" value={form.fuelType} onChange={updateField}>
-                <option>Bensin</option>
-                <option>Diesel</option>
-                <option>Hybrid</option>
-                <option>Listrik</option>
+                {FUEL_TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
               </select>
+            </label>
+            <label className="form-field" htmlFor="submission-body-type">
+              <span>Tipe mobil</span>
+              <select
+                id="submission-body-type"
+                name="bodyType"
+                value={form.bodyType}
+                onChange={updateField}
+                aria-invalid={Boolean(errors.bodyType)}
+                aria-describedby={errors.bodyType ? 'submission-bodyType-error' : undefined}
+              >
+                <option value="">Pilih tipe mobil</option>
+                {BODY_TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+              {errors.bodyType && <small className="field-error" id="submission-bodyType-error">{errors.bodyType}</small>}
+            </label>
+            <label className="form-field" htmlFor="submission-color">
+              <span>Warna mobil</span>
+              <select
+                id="submission-color"
+                name="color"
+                value={form.color}
+                onChange={updateField}
+                aria-invalid={Boolean(errors.color)}
+                aria-describedby={errors.color ? 'submission-color-error' : undefined}
+              >
+                <option value="">Pilih warna</option>
+                {COLOR_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+              {errors.color && <small className="field-error" id="submission-color-error">{errors.color}</small>}
             </label>
             <Field name="mileage" label="Jarak tempuh (km)" type="number" min="0" max="2147483647" inputMode="numeric" value={form.mileage} onChange={updateField} error={errors.mileage} />
             <Field name="expectedPrice" label="Harga yang diharapkan (Rp)" type="number" min="1" step="1" inputMode="numeric" value={form.expectedPrice} onChange={updateField} error={errors.expectedPrice} />

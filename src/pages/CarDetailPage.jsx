@@ -1,4 +1,4 @@
-import { ArrowLeft, Fuel, Gauge, Heart, MapPin, MessageCircle, Settings2 } from 'lucide-react'
+import { ArrowLeft, Car, Fuel, Gauge, Heart, MapPin, MessageCircle, Palette, Settings2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import AppLink from '../components/AppLink.jsx'
 import ShareCarButton from '../components/ShareCarButton.jsx'
@@ -97,6 +97,8 @@ export default function CarDetailPage({ id, navigate, wishlistIds, toggleWishlis
         <div className="spec-item"><span><Gauge size={15} /> Jarak tempuh</span><strong>{formatMileage(car.mileage)}</strong></div>
         <div className="spec-item"><span><Settings2 size={15} /> Transmisi</span><strong>{car.transmission}</strong></div>
         <div className="spec-item"><span><Fuel size={15} /> Bahan bakar</span><strong>{car.fuelType || 'Belum tersedia'}</strong></div>
+        <div className="spec-item"><span><Car size={15} /> Tipe mobil</span><strong>{car.bodyType || '-'}</strong></div>
+        <div className="spec-item"><span><Palette size={15} /> Warna</span><strong>{car.color || '-'}</strong></div>
         <div className="spec-item"><span>Penjual</span><strong>{car.sellerName}</strong></div>
       </section>
 

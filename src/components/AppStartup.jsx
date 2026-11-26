@@ -1,5 +1,6 @@
 import { useLayoutEffect } from 'react'
 import App from '../App.jsx'
+import AuthProvider from '../contexts/AuthProvider.jsx'
 import ThemeProvider from '../contexts/ThemeProvider.jsx'
 
 export default function AppStartup() {
@@ -9,7 +10,9 @@ export default function AppStartup() {
 
   return (
     <ThemeProvider>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </ThemeProvider>
   )
 }
