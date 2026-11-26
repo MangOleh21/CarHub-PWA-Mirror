@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import {
   Archive,
-  ArrowRight,
+  Eye,
   Image as ImageIcon,
   MapPin,
   Pencil,
@@ -11,6 +11,8 @@ import {
   X,
 } from 'lucide-react'
 import AppLink from '../../components/AppLink.jsx'
+import AdminCarDetailsDialog from '../../components/AdminCarDetailsDialog.jsx'
+import AdminPagination from '../../components/AdminPagination.jsx'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageGallery from '../../components/ImageGallery.jsx'
 import { formatMileage, formatPrice } from '../../lib/format.js'
@@ -21,8 +23,6 @@ import {
   restoreCar,
 } from '../../services/api.js'
 
-const PAGE_SIZE = 20
-
 function AdminCarCard({
   car,
   navigate,
@@ -31,6 +31,7 @@ function AdminCarCard({
   onArchiveChange,
   onPermanentlyDelete,
   onViewGallery,
+  onViewDetails,
 }) {
   const [imageFailed, setImageFailed] = useState(false)
   const images = car.images?.length ? car.images : [car.imageUrl]
@@ -69,6 +70,12 @@ function AdminCarCard({
         </p>
         <p className="car-price">{formatPrice(car.price)}</p>
         <div className="admin-row-actions">
+          <button
+            className="button button-quiet"
+            type="button"
+            onClick={() => onViewDetails(car)}
+            aria-label={`Lihat detail ${car.brand} ${car.model}`}
+          ><Eye size={16} aria-hidden="true" /> Detail</button>
           <AppLink
             className="button button-quiet"
             to={`/admin/cars/${car.id}/edit`}
@@ -178,20 +185,22 @@ function AdminCarGalleryDialog({ car, onClose }) {
 export default function AdminCarsPanel({ navigate, onDataChange }) {
   const [archiveStatus, setArchiveStatus] = useState('active')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [requestKey, setRequestKey] = useState(0)
   const [response, setResponse] = useState({ key: -1, result: null, error: null })
   const [actionError, setActionError] = useState(null)
   const [actionMessage, setActionMessage] = useState(null)
   const [updatingId, setUpdatingId] = useState(null)
   const [galleryCar, setGalleryCar] = useState(null)
+  const [detailCar, setDetailCar] = useState(null)
 
   useEffect(() => {
     let active = true
-    getAdminCars({ archiveStatus, page, pageSize: PAGE_SIZE })
+    getAdminCars({ archiveStatus, page, pageSize })
       .then((result) => { if (active) setResponse({ key: requestKey, result, error: null }) })
       .catch((error) => { if (active) setResponse({ key: requestKey, result: null, error: error.message }) })
     return () => { active = false }
-  }, [archiveStatus, page, requestKey])
+  }, [archiveStatus, page, pageSize, requestKey])
 
   const loading = response.key !== requestKey
   const result = response.key === requestKey ? response.result : null
@@ -242,6 +251,17 @@ export default function AdminCarsPanel({ navigate, onDataChange }) {
     setArchiveStatus(status)
     setPage(1)
     setActionMessage(null)
+    setRequestKey((key) => key + 1)
+  }
+
+  function changePage(nextPage) {
+    setPage(nextPage)
+    setRequestKey((key) => key + 1)
+  }
+
+  function changePageSize(nextPageSize) {
+    setPageSize(nextPageSize)
+    setPage(1)
     setRequestKey((key) => key + 1)
   }
 
@@ -297,34 +317,29 @@ export default function AdminCarsPanel({ navigate, onDataChange }) {
                 onArchiveChange={updateArchive}
                 onPermanentlyDelete={permanentlyDelete}
                 onViewGallery={setGalleryCar}
+                onViewDetails={setDetailCar}
               />
             ))}
           </div>
-          {result.pagination.totalPages > 1 && (
-            <div className="pagination">
-              <button
-                className="button button-outline"
-                type="button"
-                disabled={page <= 1}
-                onClick={() => {
-                  setPage((current) => current - 1)
-                  setRequestKey((key) => key + 1)
-                }}
-              >Sebelumnya</button>
-              <span>Halaman {page} dari {result.pagination.totalPages}</span>
-              <button
-                className="button button-outline"
-                type="button"
-                disabled={page >= result.pagination.totalPages}
-                onClick={() => {
-                  setPage((current) => current + 1)
-                  setRequestKey((key) => key + 1)
-                }}
-              >Berikutnya <ArrowRight size={15} aria-hidden="true" /></button>
-            </div>
+          {result.data.length > 0 && (
+            <AdminPagination
+              currentPage={page}
+              pageSize={pageSize}
+              totalPages={result.pagination.totalPages}
+              onPageChange={changePage}
+              onPageSizeChange={changePageSize}
+              label="Navigasi halaman katalog mobil"
+            />
           )}
           {galleryCar && (
             <AdminCarGalleryDialog car={galleryCar} onClose={() => setGalleryCar(null)} />
+          )}
+          {detailCar && (
+            <AdminCarDetailsDialog
+              car={detailCar}
+              archived={archiveStatus === 'archived'}
+              onClose={() => setDetailCar(null)}
+            />
           )}
         </>
       )}

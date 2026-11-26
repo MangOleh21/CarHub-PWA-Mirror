@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
+import AdminPagination from '../../components/AdminPagination.jsx'
 import { EmptyState, ErrorState, LoadingState } from '../../components/Feedback.jsx'
 import ImageGallery from '../../components/ImageGallery.jsx'
 import { formatPrice } from '../../lib/format.js'
 import { getAdminSubmissions, reviewSubmission } from '../../services/api.js'
-
-const PAGE_SIZE = 20
 
 function SubmissionCard({ submission, onReview, busy }) {
   const [reviewNote, setReviewNote] = useState('')
@@ -119,6 +118,7 @@ function SubmissionCard({ submission, onReview, busy }) {
 export default function AdminSubmissionsPanel({ onDataChange }) {
   const [status, setStatus] = useState('pending')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [requestKey, setRequestKey] = useState(0)
   const [response, setResponse] = useState({ key: -1, result: null, error: null })
   const [busyId, setBusyId] = useState(null)
@@ -126,11 +126,11 @@ export default function AdminSubmissionsPanel({ onDataChange }) {
 
   useEffect(() => {
     let active = true
-    getAdminSubmissions({ status, page, pageSize: PAGE_SIZE })
+    getAdminSubmissions({ status, page, pageSize })
       .then((result) => { if (active) setResponse({ key: requestKey, result, error: null }) })
       .catch((error) => { if (active) setResponse({ key: requestKey, result: null, error: error.message }) })
     return () => { active = false }
-  }, [status, page, requestKey])
+  }, [status, page, pageSize, requestKey])
 
   const loading = response.key !== requestKey
   const result = response.key === requestKey ? response.result : null
@@ -153,6 +153,17 @@ export default function AdminSubmissionsPanel({ onDataChange }) {
 
   function changeStatus(event) {
     setStatus(event.target.value)
+    setPage(1)
+    setRequestKey((key) => key + 1)
+  }
+
+  function changePage(nextPage) {
+    setPage(nextPage)
+    setRequestKey((key) => key + 1)
+  }
+
+  function changePageSize(nextPageSize) {
+    setPageSize(nextPageSize)
     setPage(1)
     setRequestKey((key) => key + 1)
   }
@@ -187,28 +198,15 @@ export default function AdminSubmissionsPanel({ onDataChange }) {
               <SubmissionCard key={submission.id} submission={submission} onReview={review} busy={busyId === submission.id} />
             ))}
           </div>
-          {result.pagination.totalPages > 1 && (
-            <div className="pagination">
-              <button
-                className="button button-outline"
-                type="button"
-                disabled={page <= 1}
-                onClick={() => {
-                  setPage((current) => current - 1)
-                  setRequestKey((key) => key + 1)
-                }}
-              >Sebelumnya</button>
-              <span>Halaman {page} dari {result.pagination.totalPages}</span>
-              <button
-                className="button button-outline"
-                type="button"
-                disabled={page >= result.pagination.totalPages}
-                onClick={() => {
-                  setPage((current) => current + 1)
-                  setRequestKey((key) => key + 1)
-                }}
-              >Berikutnya</button>
-            </div>
+          {result.data.length > 0 && (
+            <AdminPagination
+              currentPage={page}
+              pageSize={pageSize}
+              totalPages={result.pagination.totalPages}
+              onPageChange={changePage}
+              onPageSizeChange={changePageSize}
+              label="Navigasi halaman pengajuan"
+            />
           )}
         </>
       )}
