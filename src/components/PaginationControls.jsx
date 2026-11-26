@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { normalizePageInput } from '../lib/pagination.js'
 
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
+const PAGE_SIZE_OPTIONS = [5, 6, 9, 10, 12, 18, 20, 30, 50]
 
 export default function PaginationControls({
   currentPage,
