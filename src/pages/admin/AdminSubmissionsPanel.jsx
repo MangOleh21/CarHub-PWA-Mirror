@@ -127,7 +127,12 @@ function SubmissionCard({ submission, onReview, busy }) {
         </div>
       )}
       {submission.reviewedByEmail && (
-        <p className="review-note"><strong>Ditinjau oleh:</strong> {submission.reviewedByEmail}</p>
+        <p className="review-note">
+          <strong>Ditinjau oleh:</strong>{' '}
+          {submission.reviewedByName
+            ? `${submission.reviewedByName} (${submission.reviewedByEmail})`
+            : submission.reviewedByEmail}
+        </p>
       )}
       {submission.reviewedAt && (
         <p className="review-note">

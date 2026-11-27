@@ -102,6 +102,9 @@ function parseSubmission(value) {
     || isHttpsUrl(value.imageUrl)
   const validColor = value?.color === undefined || value.color === null || typeof value.color === 'string'
   const validBodyType = value?.bodyType === undefined || value.bodyType === null || typeof value.bodyType === 'string'
+  const validReviewedByName = value?.reviewedByName === undefined
+    || value.reviewedByName === null
+    || typeof value.reviewedByName === 'string'
   const isValid = value
     && typeof value.id === 'string'
     && typeof value.brand === 'string'
@@ -111,6 +114,7 @@ function parseSubmission(value) {
     && typeof value.sellerPhone === 'string'
     && validColor
     && validBodyType
+    && validReviewedByName
     && Number.isInteger(value.mileage)
     && typeof value.expectedPrice === 'string'
     && /^\d+$/.test(value.expectedPrice)
@@ -128,6 +132,7 @@ function parseSubmission(value) {
     ...value,
     color: value.color ?? null,
     bodyType: value.bodyType ?? null,
+    reviewedByName: value.reviewedByName ?? null,
     imageUrl: value.imageUrl ?? images[0] ?? null,
     images,
   }
@@ -148,18 +153,26 @@ function isValidDate(value) {
 
 function parseAdmin(value) {
   if (!value || typeof value.id !== 'string' || typeof value.email !== 'string'
-    || !['owner', 'admin'].includes(value.role)) {
+    || !['owner', 'admin'].includes(value.role)
+    || (value.name !== undefined && value.name !== null && typeof value.name !== 'string')) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data sesi admin dari server tidak sesuai kontrak API.')
   }
-  return { id: value.id, email: value.email, role: value.role }
+  return {
+    id: value.id,
+    ...(value.name ? { name: value.name } : {}),
+    email: value.email,
+    role: value.role,
+  }
 }
 
 function parseUser(value) {
+  const role = value?.role === undefined ? 'user' : value.role
   if (!value
     || typeof value.id !== 'string'
     || typeof value.name !== 'string'
     || typeof value.email !== 'string'
     || typeof value.phone !== 'string'
+    || !['user', 'admin', 'owner'].includes(role)
     || (value.location !== undefined && value.location !== null && typeof value.location !== 'string')
     || (value.createdAt !== undefined && !isValidDate(value.createdAt))) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data akun pengguna dari server tidak sesuai kontrak API.')
@@ -170,6 +183,7 @@ function parseUser(value) {
     email: value.email,
     phone: value.phone,
     location: value.location ?? null,
+    role,
     ...(value.createdAt ? { createdAt: value.createdAt } : {}),
   }
 }
@@ -232,7 +246,12 @@ function parseManagedAdmin(value) {
   if (typeof value.isActive !== 'boolean') {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data akun admin dari server tidak sesuai kontrak API.')
   }
-  return { ...admin, isActive: value.isActive }
+  return {
+    ...admin,
+    ...(typeof value.phone === 'string' ? { phone: value.phone } : {}),
+    ...(typeof value.location === 'string' || value.location === null ? { location: value.location } : {}),
+    isActive: value.isActive,
+  }
 }
 
 function parseAdminAccount(value) {
@@ -240,7 +259,10 @@ function parseAdminAccount(value) {
   if (!isValidDate(value.createdAt)) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Data akun admin dari server tidak sesuai kontrak API.')
   }
-  return { ...admin, createdAt: value.createdAt }
+  return {
+    ...admin,
+    createdAt: value.createdAt,
+  }
 }
 
 function parseReviewedSubmission(value) {
@@ -248,6 +270,7 @@ function parseReviewedSubmission(value) {
     || typeof value.id !== 'string'
     || !['approved', 'rejected'].includes(value.status)
     || typeof value.reviewedByEmail !== 'string'
+    || (value.reviewedByName !== undefined && value.reviewedByName !== null && typeof value.reviewedByName !== 'string')
     || (typeof value.reviewNote !== 'string' && value.reviewNote !== null)
     || !isValidDate(value.reviewedAt)) {
     throw new ApiError(502, 'INVALID_RESPONSE', 'Hasil review dari server tidak sesuai kontrak API.')
@@ -256,6 +279,7 @@ function parseReviewedSubmission(value) {
     id: value.id,
     status: value.status,
     reviewedByEmail: value.reviewedByEmail,
+    reviewedByName: value.reviewedByName ?? null,
     reviewNote: value.reviewNote,
     reviewedAt: value.reviewedAt,
   }
@@ -588,6 +612,18 @@ export async function reviewSubmission(id, decision, input = {}) {
 export async function createAdminUser(input) {
   const data = readData(await request('/admin/users', { method: 'POST', body: input }))
   return parseManagedAdmin(data?.admin)
+}
+
+export async function updateAdminUser(id, input) {
+  const data = readData(await request(`/admin/users/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: input,
+  }))
+  return parseManagedAdmin(data?.admin)
+}
+
+export function deleteAdminUser(id) {
+  return request(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
 export async function getAdminUsers() {

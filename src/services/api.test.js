@@ -4,8 +4,10 @@ import {
   ApiError,
   archiveCar,
   createAdminCustomer,
+  createAdminUser,
   createSubmission,
   deleteAdminCustomer,
+  deleteAdminUser,
   getAdminCars,
   getAdminCustomers,
   getAdminDashboardSummary,
@@ -21,6 +23,7 @@ import {
   reviewSubmission,
   restoreCar,
   updateAdminCustomer,
+  updateAdminUser,
   updateMyProfile,
   uploadImageFile,
   uploadImageFiles,
@@ -500,6 +503,7 @@ test('user auth and profile endpoints parse allowlisted user payloads', async ()
       email: 'budi@example.test',
       phone: '081234567890',
       location: 'Semarang',
+      role: 'user',
     })
   }
   assert.deepEqual(requests.map((r) => `${r.method} ${r.url}`), [
@@ -594,5 +598,38 @@ test('admin customer CRUD endpoints manage allowlisted user accounts', async () 
     'POST http://localhost:5000/api/admin/customers',
     'PUT http://localhost:5000/api/admin/customers/21',
     'DELETE http://localhost:5000/api/admin/customers/21',
+  ])
+})
+
+test('owner admin CRUD endpoints create, update, and delete admin accounts', async () => {
+  const requests = []
+  const admin = {
+    id: '2',
+    name: 'Moderator',
+    email: 'mod@example.test',
+    phone: '081234567890',
+    location: 'Semarang',
+    role: 'admin',
+    isActive: true,
+    passwordHash: 'must-be-stripped',
+  }
+
+  globalThis.fetch = async (input, options) => {
+    const request = input instanceof Request ? input : new Request(input, options)
+    requests.push(`${request.method} ${request.url}`)
+    if (request.method === 'DELETE') return new Response(null, { status: 204 })
+    return new Response(JSON.stringify({ success: true, data: { admin } }), { status: 200 })
+  }
+
+  const created = await createAdminUser({ name: 'Moderator', email: 'mod@example.test', password: 'a strong password' })
+  const updated = await updateAdminUser('2', { name: 'Moderator', email: 'mod@example.test', isActive: false })
+  await deleteAdminUser('2')
+
+  assert.equal(created.passwordHash, undefined)
+  assert.equal(updated.name, 'Moderator')
+  assert.deepEqual(requests, [
+    'POST http://localhost:5000/api/admin/users',
+    'PUT http://localhost:5000/api/admin/users/2',
+    'DELETE http://localhost:5000/api/admin/users/2',
   ])
 })

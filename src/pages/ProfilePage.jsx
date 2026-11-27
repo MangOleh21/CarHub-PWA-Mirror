@@ -1,4 +1,5 @@
 import {
+  ArrowUpRight,
   CarFront,
   ChevronRight,
   CircleAlert,
@@ -13,6 +14,7 @@ import {
   Phone,
   Plus,
   Save,
+  ShieldCheck,
   UserPlus,
   UserRound,
   X,
@@ -63,11 +65,13 @@ function UserProfileCard({ navigate }) {
   async function saveProfile(event) {
     event.preventDefault()
     setFeedback(null)
+    const isAdminRole = user.role === 'admin' || user.role === 'owner'
     if (!draft.name.trim()) {
       setFeedback({ type: 'error', text: 'Nama lengkap wajib diisi.' })
       return
     }
-    if (!/^\+?\d[\d\s()-]{7,19}$/.test(draft.phone.trim())) {
+    const trimmedPhone = draft.phone.trim()
+    if ((!isAdminRole && !trimmedPhone) || (trimmedPhone && !/^\+?\d[\d\s()-]{7,19}$/.test(trimmedPhone))) {
       setFeedback({ type: 'error', text: 'Gunakan nomor WhatsApp yang valid.' })
       return
     }
@@ -170,6 +174,8 @@ function UserProfileCard({ navigate }) {
     .map((part) => part[0])
     .join('')
     .toUpperCase()
+  const isAdmin = user.role === 'admin' || user.role === 'owner'
+  const roleLabel = user.role === 'owner' ? 'Owner' : user.role === 'admin' ? 'Admin' : 'Pengguna'
 
   return (
     <section className="profile-user-card" aria-labelledby="profile-user-heading">
@@ -181,7 +187,9 @@ function UserProfileCard({ navigate }) {
           <div className="profile-user-title-block">
             <div className="profile-user-badge-row">
               <p className="eyebrow">PROFIL PENGGUNA</p>
-              <span className="status-badge my-listing-status-active">Aktif</span>
+              <span className={`status-badge ${isAdmin ? 'role-badge-admin' : 'role-badge-user'}`}>
+                {isAdmin && <ShieldCheck size={12} aria-hidden="true" />} {roleLabel}
+              </span>
             </div>
             <h2 id="profile-user-heading">{user.name}</h2>
             <p className="profile-user-email">
@@ -190,6 +198,11 @@ function UserProfileCard({ navigate }) {
           </div>
         </div>
         <div className="account-actions">
+          {isAdmin && (
+            <AppLink className="button button-primary" to="/admin" navigate={navigate}>
+              <ShieldCheck size={15} aria-hidden="true" /> Akses Admin Portal <ArrowUpRight size={15} aria-hidden="true" />
+            </AppLink>
+          )}
           {!editing && (
             <button className="button button-outline" type="button" onClick={startEditing} disabled={busy}>
               <Pencil size={15} aria-hidden="true" /> Edit profil
@@ -211,7 +224,7 @@ function UserProfileCard({ navigate }) {
         <dl className="profile-meta-grid">
           <div className="profile-meta-item">
             <dt><Phone size={14} aria-hidden="true" /> Nomor WhatsApp</dt>
-            <dd className="mono">{user.phone}</dd>
+            <dd className={user.phone ? 'mono' : ''}>{user.phone || 'Belum diatur'}</dd>
           </div>
           <div className="profile-meta-item">
             <dt><MapPin size={14} aria-hidden="true" /> Lokasi</dt>
@@ -232,11 +245,12 @@ function UserProfileCard({ navigate }) {
               />
             </label>
             <label className="form-field" htmlFor="profile-phone">
-              <span>Nomor WhatsApp</span>
+              <span>Nomor WhatsApp {isAdmin && <small>Opsional</small>}</span>
               <input
                 id="profile-phone"
                 type="tel"
                 autoComplete="tel"
+                placeholder="08xx atau +62"
                 maxLength={25}
                 value={draft.phone}
                 onChange={(event) => setDraft((current) => ({ ...current, phone: event.target.value }))}

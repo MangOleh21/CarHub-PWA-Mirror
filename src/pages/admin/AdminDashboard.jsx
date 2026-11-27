@@ -3,6 +3,7 @@ import { ArrowUpRight, CarFront, ClipboardList, LogOut, RefreshCw, UserRound, Us
 import AppLink from '../../components/AppLink.jsx'
 import BrandMark from '../../components/BrandMark.jsx'
 import { ErrorState, LoadingState } from '../../components/Feedback.jsx'
+import { useAuth } from '../../contexts/useAuth.js'
 import { getAdminDashboardSummary, getAdminSession, logoutAdmin } from '../../services/api.js'
 import AdminCarsPanel from './AdminCarsPanel.jsx'
 import AdminCustomersPanel from './AdminCustomersPanel.jsx'
@@ -65,6 +66,7 @@ function AdminSummaryCards({ revision }) {
 }
 
 export default function AdminDashboard({ navigate }) {
+  const { refreshSession } = useAuth()
   const [session, setSession] = useState(null)
   const [sessionError, setSessionError] = useState(null)
   const [tab, setTab] = useState('cars')
@@ -79,6 +81,7 @@ export default function AdminDashboard({ navigate }) {
       .catch((error) => {
         if (!active) return
         if (error.status === 401) navigate('/admin/login')
+        else if (error.status === 403) navigate('/profile')
         else setSessionError(error.message)
       })
     return () => { active = false }
@@ -89,6 +92,7 @@ export default function AdminDashboard({ navigate }) {
     setLogoutError(null)
     try {
       await logoutAdmin()
+      await refreshSession()
       navigate('/admin/login')
     } catch (error) {
       setLogoutError(error.message)
@@ -113,7 +117,7 @@ export default function AdminDashboard({ navigate }) {
         </AppLink>
         <div className="admin-header-actions">
           <div className="admin-identity">
-            <span>{session.email}</span>
+            <span>{session.name ? `${session.name} (${session.email})` : session.email}</span>
             <small>{session.role === 'owner' ? 'Owner' : 'Admin'}</small>
           </div>
           <button className="button button-quiet" type="button" onClick={logout} disabled={loggingOut}>

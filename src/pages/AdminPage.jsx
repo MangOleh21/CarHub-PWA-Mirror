@@ -3,6 +3,7 @@ import { CircleAlert, Eye, EyeOff } from 'lucide-react'
 import AppLink from '../components/AppLink.jsx'
 import BrandMark from '../components/BrandMark.jsx'
 import { ErrorState, LoadingState } from '../components/Feedback.jsx'
+import { useAuth } from '../contexts/useAuth.js'
 import { getAdminLoginErrorMessage } from '../lib/admin-login.js'
 import AdminDashboard from './admin/AdminDashboard.jsx'
 import AdminCarEditor from './admin/AdminCarEditor.jsx'
@@ -28,6 +29,7 @@ export default function AdminPage({ pathname, navigate }) {
 }
 
 function AdminLogin({ navigate }) {
+  const { refreshSession } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -41,7 +43,7 @@ function AdminLogin({ navigate }) {
     getAdminSession()
       .then(() => { if (active) navigate('/admin') })
       .catch((cause) => {
-        if (!active || cause.status === 401) return
+        if (!active || cause.status === 401 || cause.status === 403) return
         setSessionError(cause.message)
       })
       .finally(() => { if (active) setCheckingSession(false) })
@@ -54,6 +56,7 @@ function AdminLogin({ navigate }) {
     setSubmitting(true)
     try {
       await loginAdmin({ email: email.trim(), password })
+      await refreshSession()
       setPassword('')
       setShowPassword(false)
       navigate('/admin')
@@ -108,7 +111,7 @@ function AdminLogin({ navigate }) {
                 id="admin-password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
-                minLength={12}
+                minLength={8}
                 maxLength={128}
                 required
                 value={password}

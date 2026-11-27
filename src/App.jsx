@@ -38,19 +38,22 @@ function HeaderAccountIndicator({ navigate, pathname }) {
   const parts = user.name.trim().split(/\s+/).filter(Boolean)
   const initials = parts.slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'U'
   const shortName = parts[0] || user.name
+  const isAdmin = user.role === 'admin' || user.role === 'owner'
+  const roleLabel = user.role === 'owner' ? 'Owner' : 'Admin'
 
   return (
     <AppLink
       className={`header-account-chip${pathname === '/profile' || pathname === '/my-listings' ? ' is-active' : ''}`}
       to="/profile"
       navigate={navigate}
-      aria-label={`Akun aktif: ${user.name}, buka halaman Profil`}
+      aria-label={`Akun aktif: ${user.name}${isAdmin ? ` (${roleLabel})` : ''}, buka halaman Profil`}
     >
       <span className="header-account-avatar" aria-hidden="true">
         {initials}
         <span className="header-account-dot" />
       </span>
       <span className="header-account-name">{shortName}</span>
+      {isAdmin && <span className="header-role-badge">{roleLabel}</span>}
     </AppLink>
   )
 }

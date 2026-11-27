@@ -128,6 +128,7 @@ export default function AdminCarEditor({ carId, navigate }) {
       } catch (error) {
         if (!active) return
         if (error.status === 401) navigate('/admin/login')
+        else if (error.status === 403) navigate('/profile')
         else setLoaded({ status: 'error', car: null, error: error.message })
       }
     }

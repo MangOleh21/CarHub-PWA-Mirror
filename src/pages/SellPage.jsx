@@ -139,6 +139,14 @@ export default function SellPage({ navigate }) {
     }))
   }
 
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner'
+
+  useEffect(() => {
+    if (authStatus === 'ready' && isAdmin) {
+      navigate('/admin/cars/new')
+    }
+  }, [authStatus, isAdmin, navigate])
+
   useEffect(() => {
     if (errorCount) errorSummary.current?.focus()
   }, [errorCount])
@@ -147,6 +155,14 @@ export default function SellPage({ navigate }) {
     return (
       <main className="page-content sell-page">
         <LoadingState label="Memeriksa sesi akun" />
+      </main>
+    )
+  }
+
+  if (isAdmin) {
+    return (
+      <main className="page-content sell-page">
+        <LoadingState label="Mengarahkan ke halaman tambah mobil admin" />
       </main>
     )
   }
